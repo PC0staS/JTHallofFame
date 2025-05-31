@@ -33,9 +33,10 @@ export default function Gallery({ photos: initialPhotos, currentUserId, currentU
   const closeModal = () => {
     setSelectedPhoto(null);
   };
-
   const handleDeletePhoto = async (photoId: string, event: React.MouseEvent) => {
     event.stopPropagation(); // Evitar que se abra el modal
+    
+    console.log('Delete button clicked:', { photoId, currentUserId });
     
     if (!currentUserId) {
       alert('Debes estar autenticado para eliminar fotos');
@@ -90,30 +91,44 @@ export default function Gallery({ photos: initialPhotos, currentUserId, currentU
               className="card h-100 shadow-sm custom-card gallery-image position-relative"
               style={{ cursor: 'pointer' }}
               onClick={() => openModal(photo)}
-            >
-              {/* Botón de eliminar - solo mostrar si es el dueño */}
+            >              {/* Botón de eliminar - solo mostrar si es el dueño */}
               {currentUserId && (photo.uploaded_by === currentUserId || photo.uploaded_by === currentUserName) && (
                 <button
-                  className="btn btn-danger btn-sm position-absolute top-0 end-0 m-2"
+                  className="btn btn-danger btn-sm position-absolute delete-btn"
                   style={{ 
+                    top: '8px',
+                    right: '8px',
                     zIndex: 10,
-                    opacity: 0.8,
+                    opacity: 0.9,
                     borderRadius: '50%',
-                    width: '32px',
-                    height: '32px',
+                    width: '36px',
+                    height: '36px',
                     padding: 0,
                     display: 'flex',
                     alignItems: 'center',
-                    justifyContent: 'center'
+                    justifyContent: 'center',
+                    fontSize: '14px',
+                    fontWeight: 'bold',
+                    border: '2px solid white',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                    transition: 'all 0.2s ease'
                   }}
                   onClick={(e) => handleDeletePhoto(photo.id, e)}
                   disabled={deleting === photo.id}
                   title="Eliminar foto"
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.opacity = '1';
+                    e.currentTarget.style.transform = 'scale(1.1)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.opacity = '0.9';
+                    e.currentTarget.style.transform = 'scale(1)';
+                  }}
                 >
                   {deleting === photo.id ? (
-                    <i className="bi bi-hourglass-split" style={{ fontSize: '12px' }}></i>
+                    <i className="bi bi-hourglass-split"></i>
                   ) : (
-                    <i className="bi bi-trash" style={{ fontSize: '12px' }}></i>
+                    <i className="bi bi-trash"></i>
                   )}
                 </button>
               )}
@@ -162,29 +177,43 @@ export default function Gallery({ photos: initialPhotos, currentUserId, currentU
                   onClick={closeModal}
                   style={{ position: 'absolute', top: '10px', right: '10px' }}
                 ></button>
-                
-                {/* Botón de eliminar en modal - solo si es el dueño */}
+                  {/* Botón de eliminar en modal - solo si es el dueño */}
                 {currentUserId && (selectedPhoto.uploaded_by === currentUserId || selectedPhoto.uploaded_by === currentUserName) && (
                   <button
                     className="btn btn-danger btn-sm"
                     style={{ 
                       position: 'absolute', 
                       top: '10px', 
-                      right: '50px',
-                      opacity: 0.9
+                      right: '60px',
+                      opacity: 0.95,
+                      borderRadius: '8px',
+                      padding: '8px 12px',
+                      fontSize: '14px',
+                      fontWeight: 'bold',
+                      border: '2px solid white',
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                      transition: 'all 0.2s ease'
                     }}
                     onClick={(e) => handleDeletePhoto(selectedPhoto.id, e)}
                     disabled={deleting === selectedPhoto.id}
                     title="Eliminar foto"
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.opacity = '1';
+                      e.currentTarget.style.transform = 'scale(1.05)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.opacity = '0.95';
+                      e.currentTarget.style.transform = 'scale(1)';
+                    }}
                   >
                     {deleting === selectedPhoto.id ? (
                       <>
-                        <i className="bi bi-hourglass-split me-1"></i>
+                        <i className="bi bi-hourglass-split me-2"></i>
                         Eliminando...
                       </>
                     ) : (
                       <>
-                        <i className="bi bi-trash me-1"></i>
+                        <i className="bi bi-trash me-2"></i>
                         Eliminar
                       </>
                     )}
@@ -214,15 +243,41 @@ export default function Gallery({ photos: initialPhotos, currentUserId, currentU
             </div>
           </div>
         </div>
-      )}
-
-      <style>{`
+      )}      <style>{`
         .photo-card {
           transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
         }
         .photo-card:hover {
           transform: translateY(-2px);
           box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
+        }
+        
+        /* Estilos mejorados para el botón de eliminar */
+        .delete-btn {
+          background-color: #dc3545 !important;
+          color: white !important;
+          backdrop-filter: blur(4px);
+        }
+        
+        .delete-btn:hover {
+          background-color: #c82333 !important;
+          transform: scale(1.1) !important;
+        }
+        
+        .delete-btn:disabled {
+          background-color: #6c757d !important;
+          transform: none !important;
+        }
+        
+        /* Asegurar que el botón sea visible en cualquier imagen */
+        .custom-card:hover .delete-btn {
+          opacity: 1 !important;
+        }
+        
+        /* Estilos para íconos Bootstrap */
+        .bi {
+          font-style: normal !important;
+          line-height: 1 !important;
         }
       `}</style>
     </div>
