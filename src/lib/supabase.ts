@@ -49,24 +49,31 @@ export async function uploadPhoto(
     // Convertir archivo a Base64
     const base64 = await fileToBase64(file);
     
-    // Obtener el display name del usuario desde profiles
-    let displayName = userName;
-    if (!displayName) {
-      const { data: profile } = await supabase
+    // SIEMPRE obtener el display name desde la tabla profiles
+    let displayName = `user-${userId.slice(-8)}`; // fallback por defecto
+    
+    try {
+      const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('username, first_name, last_name, email')
         .eq('id', userId)
         .single();
       
-      if (profile) {
+      if (!profileError && profile) {
         displayName = profile.username || 
                      (profile.first_name ? `${profile.first_name} ${profile.last_name || ''}`.trim() : null) ||
                      profile.email?.split('@')[0] ||
                      `user-${userId.slice(-8)}`;
+        
+        console.log('Found profile for user:', { userId, profile, displayName });
       } else {
-        displayName = `user-${userId.slice(-8)}`;
+        console.log('No profile found for user:', userId, profileError);
       }
+    } catch (profileFetchError) {
+      console.error('Error fetching profile:', profileFetchError);
     }
+
+    console.log('Uploading photo with displayName:', displayName);
 
     // Insertar registro en la tabla
     const { data, error } = await supabase
@@ -76,8 +83,8 @@ export async function uploadPhoto(
           title,
           image_data: base64,
           image_name: file.name,
-          uploaded_by: displayName,
-          user_id: userId, // Nuevo campo para relacionar con profiles
+          uploaded_by: displayName, // Usar el displayName obtenido de profiles
+          user_id: userId, // Relacionar con profiles
           uploaded_at: new Date().toISOString()
         }
       ])
@@ -89,6 +96,7 @@ export async function uploadPhoto(
       return null;
     }
 
+    console.log('Photo uploaded successfully:', { id: data.id, uploaded_by: data.uploaded_by });
     return data;
   } catch (error) {
     console.error('Error in uploadPhoto:', error);
