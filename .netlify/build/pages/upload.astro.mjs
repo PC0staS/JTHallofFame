@@ -3,7 +3,7 @@ import "kleur/colors";
 import { $ as $$Layout } from "../chunks/Layout_DalQmPku.mjs";
 import { jsx, jsxs, Fragment } from "react/jsx-runtime";
 import { useState } from "react";
-import { u as uploadPhoto } from "../chunks/supabase_Brp4vljN.mjs";
+import { u as uploadPhoto } from "../chunks/supabase_Qhyrp44l.mjs";
 import { renderers } from "../renderers.mjs";
 function Upload({ onUploadSuccess, userId, userName }) {
   const [title, setTitle] = useState("");

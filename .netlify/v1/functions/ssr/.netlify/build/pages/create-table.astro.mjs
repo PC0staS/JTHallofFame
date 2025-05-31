@@ -1,7 +1,7 @@
 import { f as createComponent, g as createAstro, l as renderComponent, r as renderTemplate, m as maybeRenderHead, i as addAttribute } from "../chunks/astro/server_Dh3qN3cZ.mjs";
 import "kleur/colors";
 import { $ as $$Layout } from "../chunks/Layout_DalQmPku.mjs";
-import { c as createTableIfNotExists, a as checkDatabaseConnection } from "../chunks/supabase_Brp4vljN.mjs";
+import { c as createTableIfNotExists, a as checkDatabaseConnection } from "../chunks/supabase_Qhyrp44l.mjs";
 import { renderers } from "../renderers.mjs";
 const $$Astro = createAstro();
 const $$CreateTable = createComponent(async ($$result, $$props, $$slots) => {

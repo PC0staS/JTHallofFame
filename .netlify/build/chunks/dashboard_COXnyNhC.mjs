@@ -5,9 +5,7 @@ import "clsx";
 import "@clerk/shared/underscore";
 import { customAlphabet, urlAlphabet } from "nanoid";
 import { $ as $$Layout } from "./Layout_DalQmPku.mjs";
-import { jsx, jsxs, Fragment } from "react/jsx-runtime";
-import { useState, useEffect } from "react";
-import { g as getPhotos, d as deletePhoto, a as checkDatabaseConnection } from "./supabase_Brp4vljN.mjs";
+import { a as checkDatabaseConnection, g as getPhotos } from "./supabase_Qhyrp44l.mjs";
 var generateSafeId = (defaultSize = 10) => customAlphabet(urlAlphabet, defaultSize)();
 var __freeze$2 = Object.freeze;
 var __defProp$2 = Object.defineProperty;
@@ -92,266 +90,17 @@ Setup
 Upload
 </a> <span class="user-btn-scaled" data-astro-cid-5knycien> ${renderComponent($$result, "UserButton", UserButton, { "data-astro-cid-5knycien": true })} </span> </div> </div> </nav> `;
 }, "C:/Users/pablo/OneDrive/Documentos/Proyectos/memes/src/components/navbar.astro", void 0);
-function Gallery({ photos: initialPhotos, currentUserId, currentUserName }) {
-  const [photos, setPhotos] = useState(initialPhotos || []);
-  const [selectedPhoto, setSelectedPhoto] = useState(null);
-  const [loading, setLoading] = useState(!initialPhotos);
-  const [deleting, setDeleting] = useState(null);
-  useEffect(() => {
-    if (!initialPhotos) {
-      loadPhotos();
-    }
-  }, [initialPhotos]);
-  const loadPhotos = async () => {
-    setLoading(true);
-    const fetchedPhotos = await getPhotos();
-    setPhotos(fetchedPhotos);
-    setLoading(false);
-  };
-  const openModal = (photo) => {
-    setSelectedPhoto(photo);
-  };
-  const closeModal = () => {
-    setSelectedPhoto(null);
-  };
-  const handleDeletePhoto = async (photoId, event) => {
-    event.stopPropagation();
-    console.log("Delete button clicked:", { photoId, currentUserId });
-    if (!currentUserId) {
-      alert("Debes estar autenticado para eliminar fotos");
-      return;
-    }
-    const confirmDelete = window.confirm("¿Estás seguro de que quieres eliminar esta foto?");
-    if (!confirmDelete) return;
-    setDeleting(photoId);
-    try {
-      const success = await deletePhoto(photoId, currentUserId);
-      if (success) {
-        setPhotos((prevPhotos) => prevPhotos.filter((photo) => photo.id !== photoId));
-        if (selectedPhoto?.id === photoId) {
-          setSelectedPhoto(null);
-        }
-        alert("Foto eliminada exitosamente");
-      } else {
-        alert("Error al eliminar la foto. Verifica que sea tuya.");
-      }
-    } catch (error) {
-      console.error("Error deleting photo:", error);
-      alert("Error al eliminar la foto");
-    } finally {
-      setDeleting(null);
-    }
-  };
-  if (loading) {
-    return /* @__PURE__ */ jsx("div", { className: "container-fluid p-4", children: /* @__PURE__ */ jsx("div", { className: "d-flex justify-content-center", children: /* @__PURE__ */ jsx("div", { className: "loading-spinner" }) }) });
-  }
-  return /* @__PURE__ */ jsxs("div", { className: "container-fluid p-4", children: [
-    /* @__PURE__ */ jsxs("div", { className: "row g-3", children: [
-      "        ",
-      photos.map((photo) => /* @__PURE__ */ jsx("div", { className: "col-12 col-sm-6 col-md-4 col-lg-3", children: /* @__PURE__ */ jsxs(
-        "div",
-        {
-          className: "card h-100 shadow-sm custom-card gallery-image position-relative",
-          style: { cursor: "pointer" },
-          onClick: () => openModal(photo),
-          children: [
-            "              ",
-            currentUserId && (photo.uploaded_by === currentUserId || photo.uploaded_by === currentUserName) && /* @__PURE__ */ jsx(
-              "button",
-              {
-                className: "btn btn-danger btn-sm position-absolute delete-btn",
-                style: {
-                  top: "8px",
-                  right: "8px",
-                  zIndex: 10,
-                  opacity: 0.9,
-                  borderRadius: "50%",
-                  width: "36px",
-                  height: "36px",
-                  padding: 0,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: "14px",
-                  fontWeight: "bold",
-                  border: "2px solid white",
-                  boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
-                  transition: "all 0.2s ease"
-                },
-                onClick: (e) => handleDeletePhoto(photo.id, e),
-                disabled: deleting === photo.id,
-                title: "Eliminar foto",
-                onMouseEnter: (e) => {
-                  e.currentTarget.style.opacity = "1";
-                  e.currentTarget.style.transform = "scale(1.1)";
-                },
-                onMouseLeave: (e) => {
-                  e.currentTarget.style.opacity = "0.9";
-                  e.currentTarget.style.transform = "scale(1)";
-                },
-                children: deleting === photo.id ? /* @__PURE__ */ jsx("i", { className: "bi bi-hourglass-split" }) : /* @__PURE__ */ jsx("i", { className: "bi bi-trash" })
-              }
-            ),
-            /* @__PURE__ */ jsx(
-              "img",
-              {
-                src: photo.image_data,
-                className: "card-img-top",
-                alt: photo.title,
-                style: {
-                  height: "200px",
-                  objectFit: "cover"
-                },
-                loading: "lazy"
-              }
-            ),
-            /* @__PURE__ */ jsxs("div", { className: "card-body p-2", children: [
-              /* @__PURE__ */ jsx("h6", { className: "card-title mb-1 text-truncate", children: photo.title }),
-              /* @__PURE__ */ jsxs("small", { className: "text-muted", children: [
-                "subido por ",
-                photo.uploaded_by,
-                /* @__PURE__ */ jsx("br", {}),
-                new Date(photo.uploaded_at).toLocaleDateString()
-              ] })
-            ] })
-          ]
-        }
-      ) }, photo.id))
-    ] }),
-    photos.length === 0 && /* @__PURE__ */ jsxs("div", { className: "text-center py-5", children: [
-      /* @__PURE__ */ jsx("h5", { className: "text-muted", children: "No hay fotos disponibles" }),
-      /* @__PURE__ */ jsx("p", { className: "text-muted", children: "Sube tu primera imagen para comenzar" })
-    ] }),
-    "      ",
-    selectedPhoto && /* @__PURE__ */ jsx(
-      "div",
-      {
-        className: "modal fade show d-block",
-        style: { backgroundColor: "rgba(0,0,0,0.8)" },
-        onClick: closeModal,
-        children: /* @__PURE__ */ jsx("div", { className: "modal-dialog modal-lg modal-dialog-centered", children: /* @__PURE__ */ jsxs("div", { className: "modal-content bg-transparent border-0", children: [
-          /* @__PURE__ */ jsxs("div", { className: "modal-header border-0 position-absolute", style: { top: 0, right: 0, zIndex: 20 }, children: [
-            /* @__PURE__ */ jsx(
-              "button",
-              {
-                type: "button",
-                className: "btn-close btn-close-white",
-                onClick: closeModal,
-                style: { position: "absolute", top: "10px", right: "10px" }
-              }
-            ),
-            currentUserId && (selectedPhoto.uploaded_by === currentUserId || selectedPhoto.uploaded_by === currentUserName) && /* @__PURE__ */ jsx(
-              "button",
-              {
-                className: "btn btn-danger btn-sm",
-                style: {
-                  position: "absolute",
-                  top: "10px",
-                  right: "60px",
-                  opacity: 0.95,
-                  borderRadius: "8px",
-                  padding: "8px 12px",
-                  fontSize: "14px",
-                  fontWeight: "bold",
-                  border: "2px solid white",
-                  boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
-                  transition: "all 0.2s ease"
-                },
-                onClick: (e) => handleDeletePhoto(selectedPhoto.id, e),
-                disabled: deleting === selectedPhoto.id,
-                title: "Eliminar foto",
-                onMouseEnter: (e) => {
-                  e.currentTarget.style.opacity = "1";
-                  e.currentTarget.style.transform = "scale(1.05)";
-                },
-                onMouseLeave: (e) => {
-                  e.currentTarget.style.opacity = "0.95";
-                  e.currentTarget.style.transform = "scale(1)";
-                },
-                children: deleting === selectedPhoto.id ? /* @__PURE__ */ jsxs(Fragment, { children: [
-                  /* @__PURE__ */ jsx("i", { className: "bi bi-hourglass-split me-2" }),
-                  "Eliminando..."
-                ] }) : /* @__PURE__ */ jsxs(Fragment, { children: [
-                  /* @__PURE__ */ jsx("i", { className: "bi bi-trash me-2" }),
-                  "Eliminar"
-                ] })
-              }
-            )
-          ] }),
-          /* @__PURE__ */ jsxs("div", { className: "modal-body p-0 text-center", children: [
-            /* @__PURE__ */ jsx(
-              "img",
-              {
-                src: selectedPhoto.image_data,
-                alt: selectedPhoto.title,
-                className: "img-fluid",
-                style: {
-                  maxHeight: "90vh",
-                  maxWidth: "100%",
-                  objectFit: "contain"
-                },
-                onClick: (e) => e.stopPropagation()
-              }
-            ),
-            /* @__PURE__ */ jsxs("div", { className: "mt-3 text-white", children: [
-              /* @__PURE__ */ jsx("h5", { children: selectedPhoto.title }),
-              /* @__PURE__ */ jsxs("p", { className: "mb-0", children: [
-                "Subido por ",
-                selectedPhoto.uploaded_by,
-                " - ",
-                new Date(selectedPhoto.uploaded_at).toLocaleDateString()
-              ] })
-            ] })
-          ] })
-        ] }) })
-      }
-    ),
-    "      ",
-    /* @__PURE__ */ jsx("style", { children: `
-        .photo-card {
-          transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
-        }
-        .photo-card:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
-        }
-        
-        /* Estilos mejorados para el botón de eliminar */
-        .delete-btn {
-          background-color: #dc3545 !important;
-          color: white !important;
-          backdrop-filter: blur(4px);
-        }
-        
-        .delete-btn:hover {
-          background-color: #c82333 !important;
-          transform: scale(1.1) !important;
-        }
-        
-        .delete-btn:disabled {
-          background-color: #6c757d !important;
-          transform: none !important;
-        }
-        
-        /* Asegurar que el botón sea visible en cualquier imagen */
-        .custom-card:hover .delete-btn {
-          opacity: 1 !important;
-        }
-        
-        /* Estilos para íconos Bootstrap */
-        .bi {
-          font-style: normal !important;
-          line-height: 1 !important;
-        }
-      ` })
-  ] });
-}
 const $$Astro = createAstro();
 const $$Dashboard = createComponent(async ($$result, $$props, $$slots) => {
   const Astro2 = $$result.createAstro($$Astro, $$props, $$slots);
   Astro2.self = $$Dashboard;
   const auth = Astro2.locals.auth();
   const userId = auth.userId;
+  console.log("Dashboard auth info:", {
+    userId,
+    hasAuth: !!auth,
+    authKeys: Object.keys(auth || {})
+  });
   let userName = null;
   if (userId) {
     try {
@@ -363,8 +112,10 @@ const $$Dashboard = createComponent(async ($$result, $$props, $$slots) => {
       if (response.ok) {
         const userData = await response.json();
         userName = userData.displayName || `user-${userId.slice(-8)}`;
+        console.log("User data fetched:", { userName, userData });
       } else {
         userName = `user-${userId.slice(-8)}`;
+        console.log("User data fetch failed, using fallback:", userName);
       }
     } catch (error) {
       console.error("Error fetching user data:", error);
@@ -389,7 +140,7 @@ const $$Dashboard = createComponent(async ($$result, $$props, $$slots) => {
 Para configurar la base de datos, ejecuta el siguiente comando en tu proyecto de Supabase:
 <br> <code class="bg-dark text-light p-2 d-block mt-2">
 Copia el contenido de supabase-setup.sql y ejecútalo en el SQL Editor de Supabase
-</code> </p> </div> </div>`}${renderComponent($$result2, "Gallery", Gallery, { "photos": photos, "currentUserId": userId || void 0, "currentUserName": userName || void 0, "client:load": true, "client:component-hydration": "load", "client:component-path": "C:/Users/pablo/OneDrive/Documentos/Proyectos/memes/src/components/Gallery.tsx", "client:component-export": "default" })} ` })}`;
+</code> </p> </div> </div>`}${renderComponent($$result2, "Gallery", null, { "photos": photos, "currentUserId": userId || void 0, "currentUserName": userName || void 0, "client:only": "react", "client:component-hydration": "only", "client:component-path": "C:/Users/pablo/OneDrive/Documentos/Proyectos/memes/src/components/Gallery.tsx", "client:component-export": "default" })} ` })}`;
 }, "C:/Users/pablo/OneDrive/Documentos/Proyectos/memes/src/components/dashboard.astro", void 0);
 export {
   $$Dashboard as $,

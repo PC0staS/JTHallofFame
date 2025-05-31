@@ -8,6 +8,12 @@ import { getPhotos, checkDatabaseConnection } from "../lib/supabase";
 const auth = Astro.locals.auth();
 const userId = auth.userId;
 
+console.log('Dashboard auth info:', { 
+  userId, 
+  hasAuth: !!auth,
+  authKeys: Object.keys(auth || {})
+});
+
 // Obtener información detallada del usuario
 let userName: string | null = null;
 if (userId) {
@@ -21,8 +27,10 @@ if (userId) {
     if (response.ok) {
       const userData = await response.json();
       userName = userData.displayName || `user-${userId.slice(-8)}`;
+      console.log('User data fetched:', { userName, userData });
     } else {
       userName = `user-${userId.slice(-8)}`;
+      console.log('User data fetch failed, using fallback:', userName);
     }
   } catch (error) {
     console.error('Error fetching user data:', error);
@@ -68,11 +76,10 @@ try {
         </p>
       </div>
     </div>
-  )}
-    <Gallery 
+  )}    <Gallery 
     photos={photos} 
     currentUserId={userId || undefined}
     currentUserName={userName || undefined}
-    client:load 
+    client:only="react"
   />
 </Layout>

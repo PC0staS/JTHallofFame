@@ -1,7 +1,7 @@
 import { f as createComponent, l as renderComponent, r as renderTemplate, m as maybeRenderHead, i as addAttribute } from "../chunks/astro/server_Dh3qN3cZ.mjs";
 import "kleur/colors";
 import { $ as $$Layout } from "../chunks/Layout_DalQmPku.mjs";
-import { a as checkDatabaseConnection, t as testTableAccess, b as createSampleData } from "../chunks/supabase_Brp4vljN.mjs";
+import { a as checkDatabaseConnection, t as testTableAccess, b as createSampleData } from "../chunks/supabase_Qhyrp44l.mjs";
 import { renderers } from "../renderers.mjs";
 const $$Setup = createComponent(async ($$result, $$props, $$slots) => {
   const dbStatus = await checkDatabaseConnection();

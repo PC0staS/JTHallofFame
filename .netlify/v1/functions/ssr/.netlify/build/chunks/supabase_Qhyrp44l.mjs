@@ -162,33 +162,10 @@ async function testTableAccess() {
     };
   }
 }
-async function deletePhoto(photoId, currentUserId) {
-  try {
-    const { data: photo, error: fetchError } = await supabase.from("photos").select("uploaded_by").eq("id", photoId).single();
-    if (fetchError) {
-      console.error("Error fetching photo:", fetchError);
-      return false;
-    }
-    if (photo.uploaded_by !== currentUserId) {
-      console.error("User not authorized to delete this photo");
-      return false;
-    }
-    const { error: deleteError } = await supabase.from("photos").delete().eq("id", photoId);
-    if (deleteError) {
-      console.error("Error deleting photo:", deleteError);
-      return false;
-    }
-    return true;
-  } catch (error) {
-    console.error("Error in deletePhoto:", error);
-    return false;
-  }
-}
 export {
   checkDatabaseConnection as a,
   createSampleData as b,
   createTableIfNotExists as c,
-  deletePhoto as d,
   getPhotos as g,
   testTableAccess as t,
   uploadPhoto as u

@@ -1,7 +1,7 @@
 import { f as createComponent, g as createAstro, l as renderComponent, r as renderTemplate, m as maybeRenderHead, i as addAttribute, n as renderScript } from "../chunks/astro/server_Dh3qN3cZ.mjs";
 import "kleur/colors";
 import { $ as $$Layout } from "../chunks/Layout_DalQmPku.mjs";
-import { t as testTableAccess, g as getPhotos } from "../chunks/supabase_Brp4vljN.mjs";
+import { t as testTableAccess, g as getPhotos } from "../chunks/supabase_Qhyrp44l.mjs";
 import { renderers } from "../renderers.mjs";
 const $$Astro = createAstro();
 const $$HealthCheck = createComponent(async ($$result, $$props, $$slots) => {

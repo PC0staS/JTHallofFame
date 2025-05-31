@@ -1,7 +1,7 @@
 import { f as createComponent, g as createAstro, p as renderHead, i as addAttribute, n as renderScript, r as renderTemplate } from "../chunks/astro/server_Dh3qN3cZ.mjs";
 import "kleur/colors";
 import "clsx";
-import { t as testTableAccess, b as createSampleData, g as getPhotos } from "../chunks/supabase_Brp4vljN.mjs";
+import { t as testTableAccess, b as createSampleData, g as getPhotos } from "../chunks/supabase_Qhyrp44l.mjs";
 import { renderers } from "../renderers.mjs";
 const $$Astro = createAstro();
 const $$TestDb = createComponent(async ($$result, $$props, $$slots) => {

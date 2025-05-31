@@ -12,8 +12,17 @@ export default function Gallery({ photos: initialPhotos, currentUserId, currentU
   const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null);
   const [loading, setLoading] = useState(!initialPhotos);
   const [deleting, setDeleting] = useState<string | null>(null);
-
+  const [isClient, setIsClient] = useState(false);
   useEffect(() => {
+    // Marcar que estamos en el cliente después de la hidratación
+    setIsClient(true);
+    console.log('Gallery hydrated on client:', { 
+      currentUserId, 
+      currentUserName, 
+      photosCount: photos.length,
+      hasPhotos: photos.length > 0
+    });
+    
     if (!initialPhotos) {
       loadPhotos();
     }
@@ -71,12 +80,42 @@ export default function Gallery({ photos: initialPhotos, currentUserId, currentU
       setDeleting(null);
     }
   };
-
   if (loading) {
     return (
       <div className="container-fluid p-4">
         <div className="d-flex justify-content-center">
           <div className="loading-spinner"></div>
+        </div>
+      </div>
+    );
+  }
+
+  // Mostrar un estado de carga durante la hidratación
+  if (!isClient) {
+    return (
+      <div className="container-fluid p-4">
+        <div className="row g-3">
+          {photos.map((photo) => (
+            <div key={photo.id} className="col-12 col-sm-6 col-md-4 col-lg-3">
+              <div className="card h-100 shadow-sm custom-card gallery-image position-relative">
+                <img
+                  src={photo.image_data}
+                  className="card-img-top"
+                  alt={photo.title}
+                  style={{ height: '200px', objectFit: 'cover' }}
+                  loading="lazy"
+                />
+                <div className="card-body p-2">
+                  <h6 className="card-title mb-1 text-truncate">{photo.title}</h6>
+                  <small className="text-muted">
+                    subido por {photo.uploaded_by}
+                    <br />
+                    {new Date(photo.uploaded_at).toLocaleDateString()}
+                  </small>
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     );
@@ -92,7 +131,7 @@ export default function Gallery({ photos: initialPhotos, currentUserId, currentU
               style={{ cursor: 'pointer' }}
               onClick={() => openModal(photo)}
             >              {/* Botón de eliminar - solo mostrar si es el dueño */}
-              {currentUserId && (photo.uploaded_by === currentUserId || photo.uploaded_by === currentUserName) && (
+              {isClient && currentUserId && (photo.uploaded_by === currentUserId || photo.uploaded_by === currentUserName) && (
                 <button
                   className="btn btn-danger btn-sm position-absolute delete-btn"
                   style={{ 
@@ -176,9 +215,8 @@ export default function Gallery({ photos: initialPhotos, currentUserId, currentU
                   className="btn-close btn-close-white" 
                   onClick={closeModal}
                   style={{ position: 'absolute', top: '10px', right: '10px' }}
-                ></button>
-                  {/* Botón de eliminar en modal - solo si es el dueño */}
-                {currentUserId && (selectedPhoto.uploaded_by === currentUserId || selectedPhoto.uploaded_by === currentUserName) && (
+                ></button>                {/* Botón de eliminar en modal - solo si es el dueño */}
+                {isClient && currentUserId && (selectedPhoto.uploaded_by === currentUserId || selectedPhoto.uploaded_by === currentUserName) && (
                   <button
                     className="btn btn-danger btn-sm"
                     style={{ 

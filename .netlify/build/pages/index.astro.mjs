@@ -1,6 +1,6 @@
 import { f as createComponent, g as createAstro, l as renderComponent, n as renderScript, q as renderSlot, r as renderTemplate, m as maybeRenderHead } from "../chunks/astro/server_Dh3qN3cZ.mjs";
 import "kleur/colors";
-import { a as $$InternalUIComponentRenderer, $ as $$Dashboard } from "../chunks/dashboard_D5KjeW40.mjs";
+import { a as $$InternalUIComponentRenderer, $ as $$Dashboard } from "../chunks/dashboard_COXnyNhC.mjs";
 import { $ as $$Layout } from "../chunks/Layout_DalQmPku.mjs";
 import "clsx";
 import { renderers } from "../renderers.mjs";
