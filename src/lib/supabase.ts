@@ -39,11 +39,35 @@ export async function getPhotos(): Promise<Photo[]> {
   }
 }
 
-export async function uploadPhoto(file: File, title: string, userId: string): Promise<Photo | null> {
+export async function uploadPhoto(
+  file: File,
+  title: string,
+  userId: string,
+  userName?: string
+): Promise<Photo | null> {
   try {
     // Convertir archivo a Base64
     const base64 = await fileToBase64(file);
     
+    // Obtener el display name del usuario desde profiles
+    let displayName = userName;
+    if (!displayName) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('username, first_name, last_name, email')
+        .eq('id', userId)
+        .single();
+      
+      if (profile) {
+        displayName = profile.username || 
+                     (profile.first_name ? `${profile.first_name} ${profile.last_name || ''}`.trim() : null) ||
+                     profile.email?.split('@')[0] ||
+                     `user-${userId.slice(-8)}`;
+      } else {
+        displayName = `user-${userId.slice(-8)}`;
+      }
+    }
+
     // Insertar registro en la tabla
     const { data, error } = await supabase
       .from('photos')
@@ -52,7 +76,8 @@ export async function uploadPhoto(file: File, title: string, userId: string): Pr
           title,
           image_data: base64,
           image_name: file.name,
-          uploaded_by: userId,
+          uploaded_by: displayName,
+          user_id: userId, // Nuevo campo para relacionar con profiles
           uploaded_at: new Date().toISOString()
         }
       ])
@@ -117,7 +142,9 @@ export async function initializeDatabase(): Promise<boolean> {
   }
 }
 
-export async function checkDatabaseConnection(): Promise<{ connected: boolean; tableExists: boolean; message: string }> {
+export async function checkDatabaseConnection(): Promise<{
+[x: string]: any; connected: boolean; tableExists: boolean; message: string 
+}> {
   try {
     // Intentar hacer una consulta simple para verificar la conexión
     const { data, error } = await supabase

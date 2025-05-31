@@ -16,16 +16,17 @@ console.log('Dashboard auth info:', {
 
 // Obtener información detallada del usuario
 let userName: string | null = null;
-if (userId) {  try {
-    const response = await fetch(`${Astro.url.origin}/api/user-simple`, {
+if (userId) {
+  try {
+    // Intenta obtener el username real de Clerk
+    const response = await fetch(`${Astro.url.origin}/api/user`, {
       headers: {
         'Cookie': Astro.request.headers.get('Cookie') || ''
       }
     });
-    
     if (response.ok) {
       const userData = await response.json();
-      userName = userData.displayName || `user-${userId.slice(-8)}`;
+      userName = userData.username || userData.displayName || `user-${userId.slice(-8)}`;
       console.log('User data fetched:', { userName, userData });
     } else {
       userName = `user-${userId.slice(-8)}`;
