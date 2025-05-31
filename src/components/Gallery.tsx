@@ -12,8 +12,7 @@ export default function Gallery({ photos: initialPhotos, currentUserId, currentU
   const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null);
   const [loading, setLoading] = useState(!initialPhotos);
   const [deleting, setDeleting] = useState<string | null>(null);
-  const [isClient, setIsClient] = useState(false);
-  useEffect(() => {
+  const [isClient, setIsClient] = useState(false);  useEffect(() => {
     // Marcar que estamos en el cliente después de la hidratación
     setIsClient(true);
     console.log('Gallery hydrated on client:', { 
@@ -21,6 +20,18 @@ export default function Gallery({ photos: initialPhotos, currentUserId, currentU
       currentUserName, 
       photosCount: photos.length,
       hasPhotos: photos.length > 0
+    });
+    
+    // Log de cada foto para debugging
+    photos.forEach((photo, index) => {
+      console.log(`Photo ${index}:`, {
+        id: photo.id,
+        title: photo.title,
+        uploaded_by: photo.uploaded_by,
+        canDelete: photo.uploaded_by === currentUserId || 
+                  photo.uploaded_by === currentUserName ||
+                  photo.uploaded_by === `user-${currentUserId?.slice(-8)}`
+      });
     });
     
     if (!initialPhotos) {
@@ -56,9 +67,8 @@ export default function Gallery({ photos: initialPhotos, currentUserId, currentU
     if (!confirmDelete) return;
 
     setDeleting(photoId);
-    
-    try {
-      const success = await deletePhoto(photoId, currentUserId);
+      try {
+      const success = await deletePhoto(photoId, currentUserId, currentUserName);
       
       if (success) {
         // Actualizar la lista local eliminando la foto
@@ -131,7 +141,12 @@ export default function Gallery({ photos: initialPhotos, currentUserId, currentU
               style={{ cursor: 'pointer' }}
               onClick={() => openModal(photo)}
             >              {/* Botón de eliminar - solo mostrar si es el dueño */}
-              {isClient && currentUserId && (photo.uploaded_by === currentUserId || photo.uploaded_by === currentUserName) && (
+              {isClient && currentUserId && (
+                // Comparar tanto por userId como por userName para mayor flexibilidad
+                photo.uploaded_by === currentUserId || 
+                photo.uploaded_by === currentUserName ||
+                photo.uploaded_by === `user-${currentUserId.slice(-8)}`
+              ) && (
                 <button
                   className="btn btn-danger btn-sm position-absolute delete-btn"
                   style={{ 

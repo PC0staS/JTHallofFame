@@ -104,7 +104,7 @@ const $$Dashboard = createComponent(async ($$result, $$props, $$slots) => {
   let userName = null;
   if (userId) {
     try {
-      const response = await fetch(`${Astro2.url.origin}/api/user-simple`, {
+      const response = await fetch(`${Astro2.url.origin}/api/user`, {
         headers: {
           "Cookie": Astro2.request.headers.get("Cookie") || ""
         }

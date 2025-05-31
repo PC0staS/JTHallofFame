@@ -1,6 +1,6 @@
 import { f as createComponent, l as renderComponent, r as renderTemplate } from "../chunks/astro/server_Dh3qN3cZ.mjs";
 import "kleur/colors";
-import { $ as $$Dashboard$1 } from "../chunks/dashboard_COXnyNhC.mjs";
+import { $ as $$Dashboard$1 } from "../chunks/dashboard_BMUr-Yn_.mjs";
 import { renderers } from "../renderers.mjs";
 const $$Dashboard = createComponent(($$result, $$props, $$slots) => {
   return renderTemplate`${renderComponent($$result, "DashboardComponent", $$Dashboard$1, {})}`;

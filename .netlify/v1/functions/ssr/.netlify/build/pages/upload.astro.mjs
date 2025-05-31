@@ -176,7 +176,7 @@ const $$Upload = createComponent(async ($$result, $$props, $$slots) => {
   }
   let userName = `user-${userId.slice(-8)}`;
   try {
-    const response = await fetch(`${Astro2.url.origin}/api/user-simple`, {
+    const response = await fetch(`${Astro2.url.origin}/api/user`, {
       headers: {
         "Cookie": Astro2.request.headers.get("Cookie") || ""
       }

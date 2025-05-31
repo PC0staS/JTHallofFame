@@ -16,9 +16,8 @@ console.log('Dashboard auth info:', {
 
 // Obtener información detallada del usuario
 let userName: string | null = null;
-if (userId) {
-  try {
-    const response = await fetch(`${Astro.url.origin}/api/user-simple`, {
+if (userId) {  try {
+    const response = await fetch(`${Astro.url.origin}/api/user`, {
       headers: {
         'Cookie': Astro.request.headers.get('Cookie') || ''
       }

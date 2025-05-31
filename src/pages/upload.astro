@@ -13,7 +13,7 @@ if (!userId) {
 // Obtener información detallada del usuario usando la API
 let userName = `user-${userId.slice(-8)}`;
 try {
-  const response = await fetch(`${Astro.url.origin}/api/user-simple`, {
+  const response = await fetch(`${Astro.url.origin}/api/user`, {
     headers: {
       'Cookie': Astro.request.headers.get('Cookie') || ''
     }

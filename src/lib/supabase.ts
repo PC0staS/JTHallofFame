@@ -259,7 +259,7 @@ export async function testTableAccess(): Promise<{ success: boolean; message: st
   }
 }
 
-export async function deletePhoto(photoId: string, currentUserId: string): Promise<boolean> {
+export async function deletePhoto(photoId: string, currentUserId: string, currentUserName?: string): Promise<boolean> {
   try {
     // Primero verificar que la foto existe y pertenece al usuario
     const { data: photo, error: fetchError } = await supabase
@@ -273,9 +273,18 @@ export async function deletePhoto(photoId: string, currentUserId: string): Promi
       return false;
     }
 
-    // Verificar que el usuario actual sea el dueño de la foto
-    if (photo.uploaded_by !== currentUserId) {
-      console.error('User not authorized to delete this photo');
+    // Verificar que el usuario actual sea el dueño de la foto con múltiples criterios
+    const isOwner = photo.uploaded_by === currentUserId || 
+                   (currentUserName && photo.uploaded_by === currentUserName) ||
+                   photo.uploaded_by === `user-${currentUserId.slice(-8)}`;
+    
+    if (!isOwner) {
+      console.error('User not authorized to delete this photo', {
+        photoUploadedBy: photo.uploaded_by,
+        currentUserId,
+        currentUserName,
+        fallbackName: `user-${currentUserId.slice(-8)}`
+      });
       return false;
     }
 
