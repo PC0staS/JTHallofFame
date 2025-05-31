@@ -1,0 +1,121 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { checkDatabaseConnection, createSampleData, testTableAccess } from '../lib/supabase';
+
+const dbStatus = await checkDatabaseConnection();
+const tableTest = await testTableAccess();
+
+let sampleDataCreated = false;
+let sampleDataError = '';
+
+// Si la tabla existe y es accesible, intentar crear datos de ejemplo
+if (tableTest.success && tableTest.count === 0) {
+  try {
+    const created = await createSampleData();
+    sampleDataCreated = created;
+  } catch (error) {
+    sampleDataError = String(error);
+  }
+}
+---
+
+<Layout title="Configuración - Galería de Memes">
+  <div class="container-fluid p-4">
+    <div class="row justify-content-center">
+      <div class="col-12 col-md-8 col-lg-6">
+        <div class="card shadow">
+          <div class="card-header bg-primary text-white">
+            <h4 class="mb-0">
+              <i class="bi bi-gear me-2"></i>
+              Estado de la Base de Datos
+            </h4>
+          </div>
+          <div class="card-body">
+            
+            <!-- Estado de Conexión -->
+            <div class="mb-4">
+              <h5>Conexión a Supabase</h5>
+              <div class={`alert ${dbStatus.connected ? 'alert-success' : 'alert-danger'}`}>
+                <i class={`bi ${dbStatus.connected ? 'bi-check-circle' : 'bi-x-circle'} me-2`}></i>
+                {dbStatus.connected ? 'Conectado' : 'No conectado'}
+              </div>
+            </div>
+
+            <!-- Estado de la Tabla -->
+            <div class="mb-4">
+              <h5>Tabla 'photos'</h5>
+              <div class={`alert ${dbStatus.tableExists ? 'alert-success' : 'alert-warning'}`}>
+                <i class={`bi ${dbStatus.tableExists ? 'bi-check-circle' : 'bi-exclamation-triangle'} me-2`}></i>
+                {dbStatus.tableExists ? 'Tabla existe' : 'Tabla no existe'}
+              </div>
+                {!dbStatus.tableExists && (
+                <div class="alert alert-info">
+                  <h6>¿Cómo crear la tabla?</h6>
+                  <p class="mb-2">Tienes dos opciones:</p>
+                  
+                  <div class="d-grid gap-2 mb-3">
+                    <a href="/create-table" class="btn btn-primary">
+                      <i class="bi bi-magic me-2"></i>
+                      Crear Automáticamente
+                    </a>
+                  </div>
+                  
+                  <p><strong>O manualmente:</strong></p>
+                  <ol>
+                    <li>Ve a tu proyecto en <a href="https://supabase.com/dashboard" target="_blank">Supabase Dashboard</a></li>
+                    <li>Ve a "SQL Editor"</li>
+                    <li>Copia y ejecuta el siguiente SQL:</li>
+                  </ol>
+                  <pre class="bg-dark text-light p-3 rounded mt-2"><code>CREATE TABLE photos (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  title TEXT NOT NULL,
+  image_data TEXT NOT NULL,
+  image_name TEXT NOT NULL,
+  uploaded_by TEXT NOT NULL,
+  uploaded_at TIMESTAMPTZ DEFAULT NOW()
+);</code></pre>
+                </div>
+              )}
+            </div>
+
+            <!-- Datos de Ejemplo -->
+            {dbStatus.tableExists && (
+              <div class="mb-4">
+                <h5>Datos de Ejemplo</h5>
+                {sampleDataCreated && (
+                  <div class="alert alert-success">
+                    <i class="bi bi-check-circle me-2"></i>
+                    Datos de ejemplo creados exitosamente
+                  </div>
+                )}
+                {sampleDataError && (
+                  <div class="alert alert-danger">
+                    <i class="bi bi-x-circle me-2"></i>
+                    Error al crear datos de ejemplo: {sampleDataError}
+                  </div>
+                )}
+              </div>
+            )}
+
+            <!-- Mensaje General -->
+            <div class="alert alert-info">
+              <strong>Estado:</strong> {dbStatus.message}
+            </div>
+
+            <!-- Botones de Navegación -->
+            <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+              <a href="/dashboard" class="btn btn-primary">
+                <i class="bi bi-house me-2"></i>
+                Ir al Dashboard
+              </a>
+              <button onclick="window.location.reload()" class="btn btn-secondary">
+                <i class="bi bi-arrow-clockwise me-2"></i>
+                Verificar Nuevamente
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</Layout>
