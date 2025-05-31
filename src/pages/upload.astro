@@ -2,17 +2,14 @@
 import Layout from '../layouts/Layout.astro';
 import UploadComponent from '../components/Upload.tsx';
 
-export const prerender = false;
-
 const auth = Astro.locals.auth();
 const userId = auth.userId;
 
-// Verificar que el usuario esté autenticado
 if (!userId) {
   return Astro.redirect('/');
 }
 
-// Obtener información detallada del usuario usando la API
+// Obtener el username real desde Clerk usando tu API
 let userName = `user-${userId.slice(-8)}`;
 try {
   const response = await fetch(`${Astro.url.origin}/api/user`, {

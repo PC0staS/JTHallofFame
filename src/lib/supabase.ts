@@ -46,36 +46,11 @@ export async function uploadPhoto(
   userName?: string
 ): Promise<Photo | null> {
   try {
-    // Convertir archivo a Base64
     const base64 = await fileToBase64(file);
-    
-    // SIEMPRE obtener el display name desde la tabla profiles
-    let displayName = `user-${userId.slice(-8)}`; // fallback por defecto
-    
-    try {
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('username, first_name, last_name, email')
-        .eq('id', userId)
-        .single();
-      
-      if (!profileError && profile) {
-        displayName = profile.username || 
-                     (profile.first_name ? `${profile.first_name} ${profile.last_name || ''}`.trim() : null) ||
-                     profile.email?.split('@')[0] ||
-                     `user-${userId.slice(-8)}`;
-        
-        console.log('Found profile for user:', { userId, profile, displayName });
-      } else {
-        console.log('No profile found for user:', userId, profileError);
-      }
-    } catch (profileFetchError) {
-      console.error('Error fetching profile:', profileFetchError);
-    }
 
-    console.log('Uploading photo with displayName:', displayName);
+    // Usa SIEMPRE el userName recibido, y solo si no existe, usa el fallback
+    const displayName = userName || `user-${userId.slice(-8)}`;
 
-    // Insertar registro en la tabla
     const { data, error } = await supabase
       .from('photos')
       .insert([
@@ -83,8 +58,8 @@ export async function uploadPhoto(
           title,
           image_data: base64,
           image_name: file.name,
-          uploaded_by: displayName, // Usar el displayName obtenido de profiles
-          user_id: userId, // Relacionar con profiles
+          uploaded_by: displayName, // Aquí va el username real
+          user_id: userId,
           uploaded_at: new Date().toISOString()
         }
       ])
@@ -96,7 +71,6 @@ export async function uploadPhoto(
       return null;
     }
 
-    console.log('Photo uploaded successfully:', { id: data.id, uploaded_by: data.uploaded_by });
     return data;
   } catch (error) {
     console.error('Error in uploadPhoto:', error);
@@ -294,36 +268,9 @@ export async function testTableAccess(): Promise<{ success: boolean; message: st
   }
 }
 
-export async function deletePhoto(photoId: string, currentUserId: string, currentUserName?: string): Promise<boolean> {
+export async function deletePhoto(photoId: string): Promise<boolean> {
   try {
-    // Primero verificar que la foto existe y pertenece al usuario
-    const { data: photo, error: fetchError } = await supabase
-      .from('photos')
-      .select('uploaded_by')
-      .eq('id', photoId)
-      .single();
-
-    if (fetchError) {
-      console.error('Error fetching photo:', fetchError);
-      return false;
-    }
-
-    // Verificar que el usuario actual sea el dueño de la foto con múltiples criterios
-    const isOwner = photo.uploaded_by === currentUserId || 
-                   (currentUserName && photo.uploaded_by === currentUserName) ||
-                   photo.uploaded_by === `user-${currentUserId.slice(-8)}`;
-    
-    if (!isOwner) {
-      console.error('User not authorized to delete this photo', {
-        photoUploadedBy: photo.uploaded_by,
-        currentUserId,
-        currentUserName,
-        fallbackName: `user-${currentUserId.slice(-8)}`
-      });
-      return false;
-    }
-
-    // Eliminar la foto
+    // Eliminar la foto sin comprobar propietario
     const { error: deleteError } = await supabase
       .from('photos')
       .delete()

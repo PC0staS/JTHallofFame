@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getPhotos, deletePhoto, type Photo } from '../lib/supabase';
+import { getPhotos, deletePhoto, type Photo, supabase } from '../lib/supabase';
 
 interface GalleryProps {
   photos?: Photo[];
@@ -118,7 +118,7 @@ export default function Gallery({ photos: initialPhotos, currentUserId, currentU
                 <div className="card-body p-2">
                   <h6 className="card-title mb-1 text-truncate">{photo.title}</h6>
                   <small className="text-muted">
-                    subido por {photo.uploaded_by}
+                    subido por {photo.user_id}
                     <br />
                     {new Date(photo.uploaded_at).toLocaleDateString()}
                   </small>
@@ -134,80 +134,89 @@ export default function Gallery({ photos: initialPhotos, currentUserId, currentU
   return (
     <div className="container-fluid p-4">
       {/* Grid de fotos */}
-      <div className="row g-3">        {photos.map((photo) => (
-          <div key={photo.id} className="col-12 col-sm-6 col-md-4 col-lg-3">
-            <div 
-              className="card h-100 shadow-sm custom-card gallery-image position-relative"
-              style={{ cursor: 'pointer' }}
-              onClick={() => openModal(photo)}
-            >              {/* Botón de eliminar - solo mostrar si es el dueño */}
-              {isClient && currentUserId && (
-                // Comparar tanto por userId como por userName para mayor flexibilidad
-                photo.uploaded_by === currentUserId || 
-                photo.uploaded_by === currentUserName ||
-                photo.uploaded_by === `user-${currentUserId.slice(-8)}`
-              ) && (
-                <button
-                  className="btn btn-danger btn-sm position-absolute delete-btn"
+      <div className="row g-3">        {photos.map((photo) => {
+          const canDelete =
+            photo.user_id === currentUserId || // por userId
+            photo.uploaded_by === currentUserName || // por username real
+            photo.uploaded_by === currentUserId || // por userId (por compatibilidad)
+            photo.uploaded_by === `user-${currentUserId?.slice(-8)}`; // por fallback antiguo
+
+          return (
+            <div key={photo.id} className="col-12 col-sm-6 col-md-4 col-lg-3">
+              <div 
+                className="card h-100 shadow-sm custom-card gallery-image position-relative"
+                style={{ cursor: 'pointer' }}
+                onClick={() => openModal(photo)}
+              >              {/* Botón de eliminar - solo mostrar si es el dueño */}
+                {isClient && (
+                  <button
+                    className="btn btn-danger btn-sm position-absolute delete-btn"
+                    style={{ 
+                      top: '8px',
+                      right: '8px',
+                      zIndex: 10,
+                      opacity: 0.9,
+                      borderRadius: '50%',
+                      width: '36px',
+                      height: '36px',
+                      padding: 0,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '14px',
+                      fontWeight: 'bold',
+                      border: '2px solid white',
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                      transition: 'all 0.2s ease'
+                    }}
+                    onClick={(e) => handleDeletePhoto(photo.id, e)}
+                    disabled={deleting === photo.id}
+                    title="Eliminar foto"
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.opacity = '1';
+                      e.currentTarget.style.transform = 'scale(1.1)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.opacity = '0.9';
+                      e.currentTarget.style.transform = 'scale(1)';
+                    }}
+                  >
+                    {deleting === photo.id ? (
+                      <>
+                        <i className="bi bi-hourglass-split me-2"></i>
+                        
+                      </>
+                    ) : (
+                      <>
+                        <i className="bi bi-trash me-2"></i>
+                        
+                      </>
+                    )}
+                  </button>
+                )}
+                
+                <img
+                  src={photo.image_data}
+                  className="card-img-top"
+                  alt={photo.title}
                   style={{ 
-                    top: '8px',
-                    right: '8px',
-                    zIndex: 10,
-                    opacity: 0.9,
-                    borderRadius: '50%',
-                    width: '36px',
-                    height: '36px',
-                    padding: 0,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: '14px',
-                    fontWeight: 'bold',
-                    border: '2px solid white',
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-                    transition: 'all 0.2s ease'
+                    height: '200px', 
+                    objectFit: 'cover' 
                   }}
-                  onClick={(e) => handleDeletePhoto(photo.id, e)}
-                  disabled={deleting === photo.id}
-                  title="Eliminar foto"
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.opacity = '1';
-                    e.currentTarget.style.transform = 'scale(1.1)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.opacity = '0.9';
-                    e.currentTarget.style.transform = 'scale(1)';
-                  }}
-                >
-                  {deleting === photo.id ? (
-                    <i className="bi bi-hourglass-split"></i>
-                  ) : (
-                    <i className="bi bi-trash"></i>
-                  )}
-                </button>
-              )}
-              
-              <img
-                src={photo.image_data}
-                className="card-img-top"
-                alt={photo.title}
-                style={{ 
-                  height: '200px', 
-                  objectFit: 'cover' 
-                }}
-                loading="lazy"
-              />
-              <div className="card-body p-2">
-                <h6 className="card-title mb-1 text-truncate">{photo.title}</h6>
-                <small className="text-muted">
-                  subido por {photo.uploaded_by}
-                  <br />
-                  {new Date(photo.uploaded_at).toLocaleDateString()}
-                </small>
+                  loading="lazy"
+                />
+                <div className="card-body p-2">
+                  <h6 className="card-title mb-1 text-truncate">{photo.title}</h6>
+                  <small className="text-muted">
+                    subido por {photo.user_id}
+                    <br />
+                    {new Date(photo.uploaded_at).toLocaleDateString()}
+                  </small>
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {photos.length === 0 && (
@@ -289,7 +298,7 @@ export default function Gallery({ photos: initialPhotos, currentUserId, currentU
                 <div className="mt-3 text-white">
                   <h5>{selectedPhoto.title}</h5>
                   <p className="mb-0">
-                    Subido por {selectedPhoto.uploaded_by} - {new Date(selectedPhoto.uploaded_at).toLocaleDateString()}
+                    Subido por {selectedPhoto.user_id} - {new Date(selectedPhoto.uploaded_at).toLocaleDateString()}
                   </p>
                 </div>
               </div>
@@ -336,3 +345,46 @@ export default function Gallery({ photos: initialPhotos, currentUserId, currentU
     </div>
   );
 }
+
+export async function uploadPhoto(
+  file: File,
+  title: string,
+  userId: string,
+  userName?: string
+): Promise<Photo | null> {
+  try {
+    const base64 = await fileToBase64(file);
+
+    // Usa SIEMPRE el userName recibido (que es el username real)
+    const owner = userName || `user-${userId.slice(-8)}`;
+
+    const { data, error } = await supabase
+      .from('photos')
+      .insert([
+        {
+          title,
+          image_data: base64,
+          image_name: file.name,
+          uploaded_by: owner, // username real
+          user_id: owner,     // username real
+          uploaded_at: new Date().toISOString()
+        }
+      ])
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error inserting photo record:', error);
+      return null;
+    }
+
+    return data;
+  } catch (error) {
+    console.error('Error in uploadPhoto:', error);
+    return null;
+  }
+}
+function fileToBase64(file: File) {
+  throw new Error('Function not implemented.');
+}
+
