@@ -1,0 +1,78 @@
+---
+import Navbar from "./navbar.astro";
+import Layout from "../layouts/Layout.astro";
+import Gallery from "./Gallery.tsx";
+import { getPhotos, checkDatabaseConnection } from "../lib/supabase";
+
+// Obtener información del usuario autenticado
+const auth = Astro.locals.auth();
+const userId = auth.userId;
+
+// Obtener información detallada del usuario
+let userName: string | null = null;
+if (userId) {
+  try {
+    const response = await fetch(`${Astro.url.origin}/api/user-simple`, {
+      headers: {
+        'Cookie': Astro.request.headers.get('Cookie') || ''
+      }
+    });
+    
+    if (response.ok) {
+      const userData = await response.json();
+      userName = userData.displayName || `user-${userId.slice(-8)}`;
+    } else {
+      userName = `user-${userId.slice(-8)}`;
+    }
+  } catch (error) {
+    console.error('Error fetching user data:', error);
+    userName = `user-${userId.slice(-8)}`;
+  }
+}
+
+// Verificar conexión a la base de datos
+const dbStatus = await checkDatabaseConnection();
+console.log('Database status:', dbStatus);
+
+// Obtener fotos desde Supabase
+let photos: any[] = [];
+let errorMessage = '';
+
+try {
+  if (dbStatus.tableExists) {
+    photos = await getPhotos();
+  } else {
+    errorMessage = dbStatus.message;
+  }
+} catch (error) {
+  console.error('Error al cargar fotos:', error);
+  errorMessage = 'Error al conectar con la base de datos';
+}
+---
+
+<Layout title="Galería de Memes">
+  <Navbar />
+  
+  {errorMessage && (
+    <div class="container-fluid p-4">
+      <div class="alert alert-warning" role="alert">
+        <h4 class="alert-heading">⚠️ Configuración requerida</h4>
+        <p>{errorMessage}</p>
+        <hr>
+        <p class="mb-0">
+          Para configurar la base de datos, ejecuta el siguiente comando en tu proyecto de Supabase:
+          <br>
+          <code class="bg-dark text-light p-2 d-block mt-2">
+            Copia el contenido de supabase-setup.sql y ejecútalo en el SQL Editor de Supabase
+          </code>
+        </p>
+      </div>
+    </div>
+  )}
+    <Gallery 
+    photos={photos} 
+    currentUserId={userId || undefined}
+    currentUserName={userName || undefined}
+    client:load 
+  />
+</Layout>

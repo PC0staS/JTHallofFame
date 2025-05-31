@@ -1,0 +1,121 @@
+/* Custom Styles for Meme Gallery */
+
+/* Global Styles */
+:root {
+    --primary-color: #6366f1;
+    --secondary-color: #8b5cf6;
+    --success-color: #10b981;
+    --warning-color: #f59e0b;
+    --danger-color: #ef4444;
+    --dark-color: #1f2937;
+    --light-color: #f8fafc;
+    --gradient-bg: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    --card-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+    --card-hover-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+}
+
+/* Background Gradient */
+body {
+    background: var(--gradient-bg);
+    min-height: 100vh;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Custom Card Styles */
+.custom-card {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    box-shadow: var(--card-shadow);
+    transition: all 0.3s ease;
+    border-radius: 15px;
+}
+
+.custom-card:hover {
+    box-shadow: var(--card-hover-shadow);
+    transform: translateY(-5px);
+}
+
+/* Gallery Image Styles */
+.gallery-image {
+    transition: all 0.3s ease;
+    cursor: pointer;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.gallery-image:hover {
+    transform: scale(1.05);
+    box-shadow: var(--card-hover-shadow);
+}
+
+/* Button Enhancements */
+.btn-custom {
+    background: linear-gradient(45deg, var(--primary-color), var(--secondary-color));
+    border: none;
+    border-radius: 25px;
+    padding: 10px 25px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    transition: all 0.3s ease;
+}
+
+.btn-custom:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 20px rgba(99, 102, 241, 0.3);
+    background: linear-gradient(45deg, var(--secondary-color), var(--primary-color));
+}
+
+/* Upload Area Styles */
+.upload-area {
+    border: 3px dashed var(--primary-color);
+    border-radius: 15px;
+    background: rgba(99, 102, 241, 0.05);
+    transition: all 0.3s ease;
+    padding: 40px;
+    text-align: center;
+}
+
+.upload-area:hover {
+    border-color: var(--secondary-color);
+    background: rgba(139, 92, 246, 0.1);
+    transform: scale(1.02);
+}
+
+.upload-area.dragover {
+    border-color: var(--success-color);
+    background: rgba(16, 185, 129, 0.1);
+    transform: scale(1.05);
+}
+
+/* Loading Spinner */
+.loading-spinner {
+    display: inline-block;
+    width: 40px;
+    height: 40px;
+    border: 4px solid rgba(99, 102, 241, 0.3);
+    border-radius: 50%;
+    border-top-color: var(--primary-color);
+    animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Animations */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.fade-in {
+    animation: fadeIn 0.6s ease-out;
+}

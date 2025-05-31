@@ -1,0 +1,36 @@
+---
+import { UserButton } from "@clerk/astro/components";
+---
+<nav class="navbar sticky-top shadow-lg py-3" style="background: linear-gradient(90deg, #ffecd2 0%, #fcb69f 100%);">
+    <div class="container-fluid d-flex align-items-center">
+        <a href="/" class="navbar-brand d-flex align-items-center gap-3">
+            <img src="/favicon.png" alt="Logo" width="40" height="40" class="rounded shadow-sm border border-2 border-white" />
+            <span class="fs-3 fw-bold text-dark" style="letter-spacing: 2px; text-shadow: 1px 1px 8px #fff8;">MakeItMeme Hall of Fame</span>
+        </a>        <div class="d-flex align-items-center gap-3">
+            <a href="/setup" class="btn btn-outline-secondary px-3 py-2 fw-semibold" style="border-radius: 1.5rem;">
+                <i class="bi bi-gear me-2"></i>
+                Setup
+            </a>
+            <a href="/upload" class="btn btn-gradient px-4 py-2 fw-semibold shadow-sm" style="background: linear-gradient(90deg, #f7971e 0%, #ffd200 100%); color: #222; border: none; border-radius: 2rem; transition: transform 0.1s;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-cloud-arrow-up me-2" viewBox="0 0 16 16">
+                    <path fill-rule="evenodd" d="M8 0a5.53 5.53 0 0 0-5.473 6.01A4.002 4.002 0 0 0 4 16h8a4 4 0 0 0 .473-7.99A5.53 5.53 0 0 0 8 0Zm.5 7.5V12a.5.5 0 0 1-1 0V7.5H5.354a.5.5 0 0 1-.354-.854l2.146-2.147a.5.5 0 0 1 .708 0l2.146 2.147a.5.5 0 0 1-.354.854H8.5Z"/>
+                </svg>
+                Upload
+            </a>
+            <span class="user-btn-scaled">
+                <UserButton />
+            </span>
+        </div>
+    </div>
+</nav>
+<style>
+    .btn-gradient:hover {
+        transform: scale(1.05);
+        box-shadow: 0 4px 16px rgba(252, 182, 159, 0.3);
+        background: linear-gradient(90deg, #ffd200 0%, #f7971e 100%);
+        color: #111;
+    }
+    .user-btn-scaled {
+        transform: scale(1.5);
+    }
+</style>
