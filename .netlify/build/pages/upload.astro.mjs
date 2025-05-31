@@ -1,6 +1,6 @@
-import { f as createComponent, g as createAstro, l as renderComponent, r as renderTemplate } from "../chunks/astro/server_Dh3qN3cZ.mjs";
+import { d as createComponent, e as createAstro, j as renderComponent, r as renderTemplate } from "../chunks/astro/server_-cF_Yyy_.mjs";
 import "kleur/colors";
-import { $ as $$Layout } from "../chunks/Layout_DalQmPku.mjs";
+import { $ as $$Layout } from "../chunks/Layout_DE5luIqj.mjs";
 import { jsx, jsxs, Fragment } from "react/jsx-runtime";
 import { useState } from "react";
 import { u as uploadPhoto } from "../chunks/supabase_Qhyrp44l.mjs";
@@ -166,6 +166,7 @@ function Upload({ onUploadSuccess, userId, userName }) {
   ] }) }) }) });
 }
 const $$Astro = createAstro();
+const prerender = false;
 const $$Upload = createComponent(async ($$result, $$props, $$slots) => {
   const Astro2 = $$result.createAstro($$Astro, $$props, $$slots);
   Astro2.self = $$Upload;
@@ -176,7 +177,7 @@ const $$Upload = createComponent(async ($$result, $$props, $$slots) => {
   }
   let userName = `user-${userId.slice(-8)}`;
   try {
-    const response = await fetch(`${Astro2.url.origin}/api/user`, {
+    const response = await fetch(`${Astro2.url.origin}/api/user-simple`, {
       headers: {
         "Cookie": Astro2.request.headers.get("Cookie") || ""
       }
@@ -196,6 +197,7 @@ const _page = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.definePropert
   __proto__: null,
   default: $$Upload,
   file: $$file,
+  prerender,
   url: $$url
 }, Symbol.toStringTag, { value: "Module" }));
 const page = () => _page;

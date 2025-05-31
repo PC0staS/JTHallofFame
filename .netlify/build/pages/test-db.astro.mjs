@@ -1,4 +1,4 @@
-import { f as createComponent, g as createAstro, p as renderHead, i as addAttribute, n as renderScript, r as renderTemplate } from "../chunks/astro/server_Dh3qN3cZ.mjs";
+import { d as createComponent, e as createAstro, l as renderHead, g as addAttribute, k as renderScript, r as renderTemplate } from "../chunks/astro/server_-cF_Yyy_.mjs";
 import "kleur/colors";
 import "clsx";
 import { t as testTableAccess, b as createSampleData, g as getPhotos } from "../chunks/supabase_Qhyrp44l.mjs";

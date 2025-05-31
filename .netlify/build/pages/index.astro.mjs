@@ -1,7 +1,7 @@
-import { f as createComponent, g as createAstro, l as renderComponent, n as renderScript, q as renderSlot, r as renderTemplate, m as maybeRenderHead } from "../chunks/astro/server_Dh3qN3cZ.mjs";
+import { d as createComponent, e as createAstro, j as renderComponent, k as renderScript, n as renderSlot, r as renderTemplate, m as maybeRenderHead } from "../chunks/astro/server_-cF_Yyy_.mjs";
 import "kleur/colors";
-import { a as $$InternalUIComponentRenderer, $ as $$Dashboard } from "../chunks/dashboard_BMUr-Yn_.mjs";
-import { $ as $$Layout } from "../chunks/Layout_DalQmPku.mjs";
+import { a as $$InternalUIComponentRenderer, $ as $$Dashboard } from "../chunks/dashboard_DWLdSaEr.mjs";
+import { $ as $$Layout } from "../chunks/Layout_DE5luIqj.mjs";
 import "clsx";
 import { renderers } from "../renderers.mjs";
 const $$Astro$7 = createAstro();
@@ -65,6 +65,7 @@ const $$SignIn = createComponent(($$result, $$props, $$slots) => {
   return renderTemplate`${maybeRenderHead()}<div class="container-fluid d-flex flex-column align-items-center justify-content-center vh-100" style="background-image: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url('/background.png'); background-size: cover; background-position: center;"> <div> ${renderComponent($$result, "ClerkSignIn", $$SignIn$1, {})} </div> </div>`;
 }, "C:/Users/pablo/OneDrive/Documentos/Proyectos/memes/src/components/SignIn.astro", void 0);
 const $$Astro = createAstro();
+const prerender = false;
 const $$Index = createComponent(($$result, $$props, $$slots) => {
   const Astro2 = $$result.createAstro($$Astro, $$props, $$slots);
   Astro2.self = $$Index;
@@ -76,6 +77,7 @@ const _page = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.definePropert
   __proto__: null,
   default: $$Index,
   file: $$file,
+  prerender,
   url: $$url
 }, Symbol.toStringTag, { value: "Module" }));
 const page = () => _page;

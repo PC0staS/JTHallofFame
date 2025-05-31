@@ -2,6 +2,8 @@
 import Layout from '../layouts/Layout.astro';
 import UploadComponent from '../components/Upload.tsx';
 
+export const prerender = false;
+
 const auth = Astro.locals.auth();
 const userId = auth.userId;
 
@@ -13,7 +15,7 @@ if (!userId) {
 // Obtener información detallada del usuario usando la API
 let userName = `user-${userId.slice(-8)}`;
 try {
-  const response = await fetch(`${Astro.url.origin}/api/user`, {
+  const response = await fetch(`${Astro.url.origin}/api/user-simple`, {
     headers: {
       'Cookie': Astro.request.headers.get('Cookie') || ''
     }
