@@ -183,12 +183,12 @@ export default function Gallery({ photos: initialPhotos, currentUserId, currentU
                   >
                     {deleting === photo.id ? (
                       <>
-                        <i className="bi bi-hourglass-split me-2"></i>
+                        <i className="bi bi-hourglass-split"></i>
                         
                       </>
                     ) : (
                       <>
-                        <i className="bi bi-trash me-2"></i>
+                        <i className="bi bi-trash"></i>
                         
                       </>
                     )}
@@ -240,7 +240,7 @@ export default function Gallery({ photos: initialPhotos, currentUserId, currentU
                   onClick={closeModal}
                   style={{ position: 'absolute', top: '10px', right: '10px' }}
                 ></button>                {/* Botón de eliminar en modal - solo si es el dueño */}
-                {isClient && currentUserId && (selectedPhoto.uploaded_by === currentUserId || selectedPhoto.uploaded_by === currentUserName) && (
+                {isClient && (
                   <button
                     className="btn btn-danger btn-sm"
                     style={{ 
@@ -270,13 +270,13 @@ export default function Gallery({ photos: initialPhotos, currentUserId, currentU
                   >
                     {deleting === selectedPhoto.id ? (
                       <>
-                        <i className="bi bi-hourglass-split me-2"></i>
-                        Eliminando...
+                        <i className="bi bi-hourglass-split"></i>
+                        
                       </>
                     ) : (
                       <>
-                        <i className="bi bi-trash me-2"></i>
-                        Eliminar
+                        <i className="bi bi-trash"></i>
+                        
                       </>
                     )}
                   </button>
