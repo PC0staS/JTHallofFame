@@ -4,9 +4,12 @@ import { getPhotos as getPhotosFromSupabase, type Photo } from '../lib/supabase'
 // Utilidad para forzar el uso del proxy para las URLs de R2
 function toProxyUrl(url: string): string {
   if (!url) return '';
-  // Detecta si es una URL de R2 (development, dominio personalizado anterior o nuevo)
-  if (url.includes('.r2.dev/') || url.includes('memes.jonastown.es/') || url.includes('img.jonastown.es/')) {
-    return `/r2-proxy?url=${encodeURIComponent(url)}`;
+  // Solo forzar el proxy en producción
+  if (import.meta.env.PROD) {
+    // Detecta si es una URL de R2 (development, dominio personalizado anterior o nuevo)
+    if (url.includes('.r2.dev/') || url.includes('memes.jonastown.es/') || url.includes('img.jonastown.es/')) {
+      return `/r2-proxy?url=${encodeURIComponent(url)}`;
+    }
   }
   return url;
 }
