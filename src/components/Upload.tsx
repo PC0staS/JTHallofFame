@@ -51,9 +51,8 @@ export default function Upload({ onUploadSuccess, userId, userName }: UploadProp
     setError('');
 
     try {
-      // Usar userName si está disponible, sino usar userId
-      const uploaderName = userName || userId;
-      const result = await uploadPhoto(file, title.trim(), uploaderName);
+      // Pasar userId y userName por separado
+      const result = await uploadPhoto(file, title.trim(), userId, userName);
       
       if (result) {
         // Limpiar formulario
