@@ -20,7 +20,8 @@ if (tableTest.success && tableTest.count === 0) {
 ---
 
 <Layout title="Configuración - Galería de Memes">
-  <div class="container-fluid p-4">
+  <main class="main-content">
+    <div class="container-fluid p-4">
     <div class="row justify-content-center">
       <div class="col-12 col-md-8 col-lg-6">
         <div class="card shadow">
@@ -117,5 +118,18 @@ if (tableTest.success && tableTest.count === 0) {
         </div>
       </div>
     </div>
-  </div>
+  </main>
 </Layout>
+
+<style>
+  .main-content {
+    padding-top: 90px; /* Espacio para la navbar fija */
+    min-height: 100vh;
+  }
+
+  @media (max-width: 768px) {
+    .main-content {
+      padding-top: 80px; /* Menos padding en móviles */
+    }
+  }
+</style>

@@ -12,6 +12,7 @@
     --gradient-bg: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     --card-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
     --card-hover-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+    --navbar-height: 90px;
 }
 
 /* Background Gradient */
@@ -19,6 +20,20 @@ body {
     background: var(--gradient-bg);
     min-height: 100vh;
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    margin: 0;
+    padding: 0;
+}
+
+/* Ensure main content doesn't overlap with fixed navbar */
+.main-content {
+    padding-top: var(--navbar-height);
+    min-height: 100vh;
+}
+
+@media (max-width: 768px) {
+    :root {
+        --navbar-height: 80px;
+    }
 }
 
 /* Custom Card Styles */

@@ -2,7 +2,8 @@
 import Navbar from "./navbar.astro";
 import Layout from "../layouts/Layout.astro";
 import Gallery from "./Gallery.tsx";
-import { getPhotos, checkDatabaseConnection } from "../lib/supabase";
+import { getPhotos as getPhotosFromSupabase, checkDatabaseConnection } from "../lib/supabase";
+import { getPublicUrl } from "../lib/cloudflare-r2";
 
 // Obtener información del usuario autenticado
 const auth = Astro.locals.auth();
@@ -48,7 +49,21 @@ let errorMessage = '';
 
 try {
   if (dbStatus.tableExists) {
-    photos = await getPhotos();
+    const rawPhotos = await getPhotosFromSupabase();
+    // Adaptar para que cada foto tenga image_url válido
+    photos = rawPhotos.map(photo => {
+      // Si ya tiene image_url, usarla; si no, construirla si hay user_id y image_name
+      let image_url = photo.image_url;
+      if (!image_url && photo.user_id && photo.image_name) {
+        // Intentar construir la ruta relativa
+        const relativePath = `${photo.user_id}/${photo.image_name}`;
+        image_url = getPublicUrl(relativePath);
+      }
+      return {
+        ...photo,
+        image_url
+      };
+    });
   } else {
     errorMessage = dbStatus.message;
   }
@@ -61,25 +76,42 @@ try {
 <Layout title="Galería de Memes">
   <Navbar />
   
-  {errorMessage && (
-    <div class="container-fluid p-4">
-      <div class="alert alert-warning" role="alert">
-        <h4 class="alert-heading">⚠️ Configuración requerida</h4>
-        <p>{errorMessage}</p>
-        <hr>
-        <p class="mb-0">
-          Para configurar la base de datos, ejecuta el siguiente comando en tu proyecto de Supabase:
-          <br>
-          <code class="bg-dark text-light p-2 d-block mt-2">
-            Copia el contenido de supabase-setup.sql y ejecútalo en el SQL Editor de Supabase
-          </code>
-        </p>
+  <main class="main-content">
+    {errorMessage && (
+      <div class="container-fluid p-4">
+        <div class="alert alert-warning" role="alert">
+          <h4 class="alert-heading">⚠️ Configuración requerida</h4>
+          <p>{errorMessage}</p>
+          <hr>
+          <p class="mb-0">
+            Para configurar la base de datos, ejecuta el siguiente comando en tu proyecto de Supabase:
+            <br>
+            <code class="bg-dark text-light p-2 d-block mt-2">
+              Copia el contenido de supabase-setup.sql y ejecútalo en el SQL Editor de Supabase
+            </code>
+          </p>
+        </div>
       </div>
-    </div>
-  )}    <Gallery 
-    photos={photos} 
-    currentUserId={userId || undefined}
-    currentUserName={userName || undefined}
-    client:only="react"
-  />
+    )}
+    
+    <Gallery 
+      photos={photos} 
+      currentUserId={userId || undefined}
+      currentUserName={userName || undefined}
+      client:only="react"
+    />
+  </main>
 </Layout>
+
+<style>
+  .main-content {
+    padding-top: 90px; /* Espacio para la navbar fija */
+    min-height: 100vh;
+  }
+
+  @media (max-width: 768px) {
+    .main-content {
+      padding-top: 80px; /* Menos padding en móviles */
+    }
+  }
+</style>

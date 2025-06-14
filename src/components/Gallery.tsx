@@ -1,5 +1,27 @@
 import { useState, useEffect } from 'react';
-import { getPhotos, deletePhoto, type Photo, supabase } from '../lib/supabase';
+import { getPhotos as getPhotosFromSupabase, type Photo } from '../lib/supabase';
+
+// Utilidad para forzar el uso del proxy para las URLs de R2
+function toProxyUrl(url: string): string {
+  if (!url) return '';
+  // Detecta si es una URL de R2 (development, dominio personalizado anterior o nuevo)
+  if (url.includes('.r2.dev/') || url.includes('memes.jonastown.es/') || url.includes('img.jonastown.es/')) {
+    return `/r2-proxy?url=${encodeURIComponent(url)}`;
+  }
+  return url;
+}
+
+// Utilidad para formatear el nombre del usuario
+function formatUploadedBy(uploadedBy: string): string {
+  if (!uploadedBy) return 'Usuario desconocido';
+  
+  // Si empieza con "user-", mostrar solo lo que viene después
+  if (uploadedBy.startsWith('user-')) {
+    return uploadedBy.substring(5); // Remover "user-"
+  }
+  
+  return uploadedBy;
+}
 
 interface GalleryProps {
   photos?: Photo[];
@@ -11,39 +33,81 @@ export default function Gallery({ photos: initialPhotos, currentUserId, currentU
   const [photos, setPhotos] = useState<Photo[]>(initialPhotos || []);
   const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null);
   const [loading, setLoading] = useState(!initialPhotos);
-  const [deleting, setDeleting] = useState<string | null>(null);
-  const [isClient, setIsClient] = useState(false);  useEffect(() => {
-    // Marcar que estamos en el cliente después de la hidratación
+  const [isClient, setIsClient] = useState(false);
+  const [deletingPhotoId, setDeletingPhotoId] = useState<string | null>(null);
+
+  useEffect(() => {
     setIsClient(true);
-    console.log('Gallery hydrated on client:', { 
-      currentUserId, 
-      currentUserName, 
-      photosCount: photos.length,
-      hasPhotos: photos.length > 0
-    });
-    
-    // Log de cada foto para debugging
-    photos.forEach((photo, index) => {
-      console.log(`Photo ${index}:`, {
-        id: photo.id,
-        title: photo.title,
-        uploaded_by: photo.uploaded_by,
-        canDelete: photo.uploaded_by === currentUserId || 
-                  photo.uploaded_by === currentUserName ||
-                  photo.uploaded_by === `user-${currentUserId?.slice(-8)}`
-      });
-    });
-    
     if (!initialPhotos) {
       loadPhotos();
+    } else {
+      // Aplicar proxy a las URLs de las fotos
+      setPhotos(initialPhotos.map((photo: Photo) => ({
+        ...photo,
+        image_data: toProxyUrl(photo.image_data)
+      })));
     }
   }, [initialPhotos]);
 
+  // Listener para el evento de refresh desde el navbar
+  useEffect(() => {
+    const handleRefreshPhotos = () => {
+      console.log('Refresh photos event received');
+      loadPhotos();
+    };
+
+    window.addEventListener('refreshPhotos', handleRefreshPhotos);
+
+    return () => {
+      window.removeEventListener('refreshPhotos', handleRefreshPhotos);
+    };
+  }, []);
+
   const loadPhotos = async () => {
     setLoading(true);
-    const fetchedPhotos = await getPhotos();
-    setPhotos(fetchedPhotos);
+    const fetchedPhotos = await getPhotosFromSupabase();
+    // Aplicar proxy a las URLs
+    setPhotos(fetchedPhotos.map((photo: Photo) => ({
+      ...photo,
+      image_data: toProxyUrl(photo.image_data)
+    })));
     setLoading(false);
+  };
+
+  const deletePhoto = async (photoId: string, event?: React.MouseEvent) => {
+    if (event) {
+      event.stopPropagation(); // Evitar que se abra el modal
+    }
+
+    if (!confirm('¿Estás seguro de que quieres eliminar esta imagen?')) {
+      return;
+    }
+
+    setDeletingPhotoId(photoId);
+
+    try {
+      const response = await fetch(`/api/delete-photo?id=${photoId}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        // Remover la foto del estado local
+        setPhotos(photos.filter(photo => photo.id !== photoId));
+        // Cerrar modal si la foto eliminada estaba seleccionada
+        if (selectedPhoto?.id === photoId) {
+          setSelectedPhoto(null);
+        }
+        alert('Imagen eliminada exitosamente');
+      } else {
+        const error = await response.json();
+        alert(`Error al eliminar la imagen: ${error.error}`);
+      }
+    } catch (error) {
+      console.error('Error al eliminar foto:', error);
+      alert('Error al eliminar la imagen');
+    } finally {
+      setDeletingPhotoId(null);
+    }
   };
 
   const openModal = (photo: Photo) => {
@@ -53,48 +117,14 @@ export default function Gallery({ photos: initialPhotos, currentUserId, currentU
   const closeModal = () => {
     setSelectedPhoto(null);
   };
-  const handleDeletePhoto = async (photoId: string, event: React.MouseEvent) => {
-    event.stopPropagation(); // Evitar que se abra el modal
-    
-    console.log('Delete button clicked:', { photoId, currentUserId });
-    
-    if (!currentUserId) {
-      alert('Debes estar autenticado para eliminar fotos');
-      return;
-    }
 
-    const confirmDelete = window.confirm('¿Estás seguro de que quieres eliminar esta foto?');
-    if (!confirmDelete) return;
-
-    setDeleting(photoId);
-      try {
-      const success = await deletePhoto(photoId, currentUserId, currentUserName);
-      
-      if (success) {
-        // Actualizar la lista local eliminando la foto
-        setPhotos(prevPhotos => prevPhotos.filter(photo => photo.id !== photoId));
-        
-        // Si la foto eliminada estaba en el modal, cerrarlo
-        if (selectedPhoto?.id === photoId) {
-          setSelectedPhoto(null);
-        }
-        
-        alert('Foto eliminada exitosamente');
-      } else {
-        alert('Error al eliminar la foto. Verifica que sea tuya.');
-      }
-    } catch (error) {
-      console.error('Error deleting photo:', error);
-      alert('Error al eliminar la foto');
-    } finally {
-      setDeleting(null);
-    }
-  };
   if (loading) {
     return (
       <div className="container-fluid p-4">
         <div className="d-flex justify-content-center">
-          <div className="loading-spinner"></div>
+          <div className="spinner-border text-primary" role="status">
+            <span className="visually-hidden">Cargando...</span>
+          </div>
         </div>
       </div>
     );
@@ -118,7 +148,7 @@ export default function Gallery({ photos: initialPhotos, currentUserId, currentU
                 <div className="card-body p-2">
                   <h6 className="card-title mb-1 text-truncate">{photo.title}</h6>
                   <small className="text-muted">
-                    subido por {photo.user_id}
+                    subido por {formatUploadedBy(photo.uploaded_by)}
                     <br />
                     {new Date(photo.uploaded_at).toLocaleDateString()}
                   </small>
@@ -134,97 +164,72 @@ export default function Gallery({ photos: initialPhotos, currentUserId, currentU
   return (
     <div className="container-fluid p-4">
       {/* Grid de fotos */}
-      <div className="row g-3">        {photos.map((photo) => {
-          const canDelete =
-            photo.user_id === currentUserId || // por userId
-            photo.uploaded_by === currentUserName || // por username real
-            photo.uploaded_by === currentUserId || // por userId (por compatibilidad)
-            photo.uploaded_by === `user-${currentUserId?.slice(-8)}`; // por fallback antiguo
-
-          return (
-            <div key={photo.id} className="col-12 col-sm-6 col-md-4 col-lg-3">
-              <div 
-                className="card h-100 shadow-sm custom-card gallery-image position-relative"
-                style={{ cursor: 'pointer' }}
-                onClick={() => openModal(photo)}
-              >              {/* Botón de eliminar - solo mostrar si es el dueño */}
-                {isClient && (
-                  <button
-                    className="btn btn-danger btn-sm position-absolute delete-btn"
-                    style={{ 
-                      top: '8px',
-                      right: '8px',
-                      zIndex: 10,
-                      opacity: 0.9,
-                      borderRadius: '50%',
-                      width: '36px',
-                      height: '36px',
-                      padding: 0,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: '14px',
-                      fontWeight: 'bold',
-                      border: '2px solid white',
-                      boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-                      transition: 'all 0.2s ease'
-                    }}
-                    onClick={(e) => handleDeletePhoto(photo.id, e)}
-                    disabled={deleting === photo.id}
-                    title="Eliminar foto"
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.opacity = '1';
-                      e.currentTarget.style.transform = 'scale(1.1)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.opacity = '0.9';
-                      e.currentTarget.style.transform = 'scale(1)';
-                    }}
-                  >
-                    {deleting === photo.id ? (
-                      <>
-                        <i className="bi bi-hourglass-split"></i>
-                        
-                      </>
-                    ) : (
-                      <>
-                        <i className="bi bi-trash"></i>
-                        
-                      </>
-                    )}
-                  </button>
+      <div className="row g-4">
+        {photos.map((photo) => (
+          <div key={photo.id} className="col-12 col-sm-6 col-md-4 col-lg-3">
+            <div 
+              className="modern-card position-relative"
+              onClick={() => openModal(photo)}
+            >
+              {/* Botón de eliminar */}
+              <button
+                className="delete-btn"
+                onClick={(e) => deletePhoto(photo.id, e)}
+                disabled={deletingPhotoId === photo.id}
+                title="Eliminar imagen"
+              >
+                {deletingPhotoId === photo.id ? (
+                  <span className="spinner-border spinner-border-sm"></span>
+                ) : (
+                  <i className="bi bi-trash"></i>
                 )}
-                
+              </button>
+
+              <div className="image-container">
                 <img
                   src={photo.image_data}
-                  className="card-img-top"
+                  className="card-image"
                   alt={photo.title}
-                  style={{ 
-                    height: '200px', 
-                    objectFit: 'cover' 
-                  }}
                   loading="lazy"
                 />
-                <div className="card-body p-2">
-                  <h6 className="card-title mb-1 text-truncate">{photo.title}</h6>
-                  <small className="text-muted">
-                    subido por {photo.user_id}
-                    <br />
+                <div className="image-overlay">
+                  <i className="bi bi-eye overlay-icon"></i>
+                </div>
+              </div>
+              
+              <div className="card-content">
+                <h6 className="card-title">{photo.title}</h6>
+                <div className="card-meta">
+                  <span className="uploaded-by">
+                    <i className="bi bi-person-circle me-1"></i>
+                    {formatUploadedBy(photo.uploaded_by)}
+                  </span>
+                  <span className="upload-date">
+                    <i className="bi bi-calendar3 me-1"></i>
                     {new Date(photo.uploaded_at).toLocaleDateString()}
-                  </small>
+                  </span>
                 </div>
               </div>
             </div>
-          );
-        })}
+          </div>
+        ))}
       </div>
 
       {photos.length === 0 && (
-        <div className="text-center py-5">
-          <h5 className="text-muted">No hay fotos disponibles</h5>
-          <p className="text-muted">Sube tu primera imagen para comenzar</p>
+        <div className="empty-state">
+          <div className="empty-icon">
+            <i className="bi bi-images"></i>
+          </div>
+          <h5>No hay fotos disponibles</h5>
+          <p>Sube tu primera imagen para comenzar</p>
+          <a href="/upload" className="btn btn-primary btn-upload-cta">
+            <i className="bi bi-cloud-arrow-up me-2"></i>
+            Subir primera imagen
+          </a>
         </div>
-      )}      {/* Modal para mostrar foto ampliada */}
+      )}
+
+      {/* Modal para mostrar foto ampliada */}
       {selectedPhoto && (
         <div 
           className="modal fade show d-block" 
@@ -239,48 +244,7 @@ export default function Gallery({ photos: initialPhotos, currentUserId, currentU
                   className="btn-close btn-close-white" 
                   onClick={closeModal}
                   style={{ position: 'absolute', top: '10px', right: '10px' }}
-                ></button>                {/* Botón de eliminar en modal - solo si es el dueño */}
-                {isClient && (
-                  <button
-                    className="btn btn-danger btn-sm"
-                    style={{ 
-                      position: 'absolute', 
-                      top: '10px', 
-                      right: '60px',
-                      opacity: 0.95,
-                      borderRadius: '8px',
-                      padding: '8px 12px',
-                      fontSize: '14px',
-                      fontWeight: 'bold',
-                      border: '2px solid white',
-                      boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-                      transition: 'all 0.2s ease'
-                    }}
-                    onClick={(e) => handleDeletePhoto(selectedPhoto.id, e)}
-                    disabled={deleting === selectedPhoto.id}
-                    title="Eliminar foto"
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.opacity = '1';
-                      e.currentTarget.style.transform = 'scale(1.05)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.opacity = '0.95';
-                      e.currentTarget.style.transform = 'scale(1)';
-                    }}
-                  >
-                    {deleting === selectedPhoto.id ? (
-                      <>
-                        <i className="bi bi-hourglass-split"></i>
-                        
-                      </>
-                    ) : (
-                      <>
-                        <i className="bi bi-trash"></i>
-                        
-                      </>
-                    )}
-                  </button>
-                )}
+                ></button>
               </div>
               
               <div className="modal-body p-0 text-center">
@@ -297,94 +261,222 @@ export default function Gallery({ photos: initialPhotos, currentUserId, currentU
                 />
                 <div className="mt-3 text-white">
                   <h5>{selectedPhoto.title}</h5>
-                  <p className="mb-0">
-                    Subido por {selectedPhoto.user_id} - {new Date(selectedPhoto.uploaded_at).toLocaleDateString()}
+                  <p className="mb-2">
+                    Subido por {formatUploadedBy(selectedPhoto.uploaded_by)} - {new Date(selectedPhoto.uploaded_at).toLocaleDateString()}
                   </p>
+                  
+                  {/* Botón de eliminar en el modal */}
+                  <button
+                    className="btn btn-danger btn-sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      deletePhoto(selectedPhoto.id);
+                    }}
+                    disabled={deletingPhotoId === selectedPhoto.id}
+                  >
+                    {deletingPhotoId === selectedPhoto.id ? (
+                      <>
+                        <span className="spinner-border spinner-border-sm me-2" style={{ width: '12px', height: '12px' }}></span>
+                        Eliminando...
+                      </>
+                    ) : (
+                      <>
+                        <i className="bi bi-trash me-2"></i>
+                        Eliminar imagen
+                      </>
+                    )}
+                  </button>
                 </div>
               </div>
             </div>
           </div>
         </div>
-      )}      <style>{`
-        .photo-card {
-          transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
-        }
-        .photo-card:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
+      )}
+
+      <style>{`
+        .modern-card {
+          background: rgba(255, 255, 255, 0.9);
+          backdrop-filter: blur(16px);
+          border-radius: 20px;
+          padding: 0;
+          cursor: pointer;
+          transition: all 0.3s ease;
+          border: 1px solid rgba(255, 255, 255, 0.2);
+          box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+          overflow: hidden;
         }
         
-        /* Estilos mejorados para el botón de eliminar */
+        .modern-card:hover {
+          transform: translateY(-8px);
+          box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+          border-color: rgba(102, 126, 234, 0.3);
+        }
+        
+        .image-container {
+          position: relative;
+          overflow: hidden;
+          border-radius: 20px 20px 0 0;
+        }
+        
+        .card-image {
+          width: 100%;
+          height: 220px;
+          object-fit: cover;
+          transition: transform 0.3s ease;
+        }
+        
+        .modern-card:hover .card-image {
+          transform: scale(1.05);
+        }
+        
+        .image-overlay {
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(0, 0, 0, 0.4);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          opacity: 0;
+          transition: all 0.3s ease;
+        }
+        
+        .modern-card:hover .image-overlay {
+          opacity: 1;
+        }
+        
+        .overlay-icon {
+          color: white;
+          font-size: 2rem;
+          transform: scale(0.8);
+          transition: transform 0.3s ease;
+        }
+        
+        .modern-card:hover .overlay-icon {
+          transform: scale(1);
+        }
+        
         .delete-btn {
-          background-color: #dc3545 !important;
-          color: white !important;
-          backdrop-filter: blur(4px);
+          position: absolute;
+          top: 12px;
+          right: 12px;
+          width: 36px;
+          height: 36px;
+          border-radius: 50%;
+          border: none;
+          background: rgba(220, 53, 69, 0.9);
+          color: white;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 10;
+          opacity: 0;
+          transition: all 0.3s ease;
+          font-size: 14px;
+          backdrop-filter: blur(8px);
+        }
+        
+        .modern-card:hover .delete-btn {
+          opacity: 1;
         }
         
         .delete-btn:hover {
-          background-color: #c82333 !important;
-          transform: scale(1.1) !important;
+          background: rgba(220, 53, 69, 1);
+          transform: scale(1.1);
         }
         
-        .delete-btn:disabled {
-          background-color: #6c757d !important;
-          transform: none !important;
+        .card-content {
+          padding: 1.25rem;
         }
         
-        /* Asegurar que el botón sea visible en cualquier imagen */
-        .custom-card:hover .delete-btn {
-          opacity: 1 !important;
+        .card-title {
+          font-size: 1.1rem;
+          font-weight: 600;
+          color: #2d3748;
+          margin-bottom: 0.75rem;
+          line-height: 1.3;
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
         }
         
-        /* Estilos para íconos Bootstrap */
+        .card-meta {
+          display: flex;
+          flex-direction: column;
+          gap: 0.5rem;
+        }
+        
+        .uploaded-by, .upload-date {
+          display: flex;
+          align-items: center;
+          font-size: 0.875rem;
+          color: #718096;
+          font-weight: 500;
+        }
+        
+        .uploaded-by i, .upload-date i {
+          font-size: 1rem;
+          color: #667eea;
+        }
+        
+        .empty-state {
+          text-align: center;
+          padding: 4rem 2rem;
+          color: #718096;
+        }
+        
+        .empty-icon {
+          font-size: 4rem;
+          color: #e2e8f0;
+          margin-bottom: 1.5rem;
+        }
+        
+        .empty-state h5 {
+          color: #4a5568;
+          margin-bottom: 0.5rem;
+        }
+        
+        .empty-state p {
+          margin-bottom: 2rem;
+        }
+        
+        .btn-upload-cta {
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          border: none;
+          border-radius: 12px;
+          padding: 0.75rem 2rem;
+          font-weight: 600;
+          transition: all 0.3s ease;
+          box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+        
+        .btn-upload-cta:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+        }
+        
         .bi {
           font-style: normal !important;
           line-height: 1 !important;
+        }
+        
+        @media (max-width: 768px) {
+          .card-content {
+            padding: 1rem;
+          }
+          
+          .card-image {
+            height: 180px;
+          }
+          
+          .modern-card:hover {
+            transform: translateY(-4px);
+          }
         }
       `}</style>
     </div>
   );
 }
-
-export async function uploadPhoto(
-  file: File,
-  title: string,
-  userId: string,
-  userName?: string
-): Promise<Photo | null> {
-  try {
-    const base64 = await fileToBase64(file);
-
-    // Usa SIEMPRE el userName recibido (que es el username real)
-    const owner = userName || `user-${userId.slice(-8)}`;
-
-    const { data, error } = await supabase
-      .from('photos')
-      .insert([
-        {
-          title,
-          image_data: base64,
-          image_name: file.name,
-          uploaded_by: owner, // username real
-          user_id: owner,     // username real
-          uploaded_at: new Date().toISOString()
-        }
-      ])
-      .select()
-      .single();
-
-    if (error) {
-      console.error('Error inserting photo record:', error);
-      return null;
-    }
-
-    return data;
-  } catch (error) {
-    console.error('Error in uploadPhoto:', error);
-    return null;
-  }
-}
-function fileToBase64(file: File) {
-  throw new Error('Function not implemented.');
-}
-

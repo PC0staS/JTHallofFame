@@ -270,17 +270,63 @@ export async function testTableAccess(): Promise<{ success: boolean; message: st
 
 export async function deletePhoto(photoId: string): Promise<boolean> {
   try {
-    // Eliminar la foto sin comprobar propietario
+    // Primero, obtener la información de la foto para extraer la URL de R2
+    const { data: photoData, error: fetchError } = await supabase
+      .from('photos')
+      .select('*')
+      .eq('id', photoId)
+      .single();
+
+    if (fetchError) {
+      console.error('Error fetching photo for deletion:', fetchError);
+      return false;
+    }
+
+    if (!photoData) {
+      console.error('Photo not found');
+      return false;
+    }
+
+    // Detectar si la foto tiene una URL de R2 (no base64)
+    const isR2Url = photoData.image_data && 
+      !photoData.image_data.startsWith('data:image/') && // No es base64
+      (photoData.image_data.includes('jthalloffame.com') || 
+       photoData.image_data.includes('.r2.dev') || 
+       photoData.image_data.includes('jonastown.es'));
+
+    if (isR2Url) {
+      try {
+        // Extraer el nombre del archivo de la URL
+        const url = new URL(photoData.image_data);
+        const filePath = url.pathname.substring(1); // Quitar el "/" inicial
+        
+        console.log('Attempting to delete R2 file:', filePath);
+        
+        // Importar dinámicamente y usar la función de eliminación de R2 directamente
+        const { deleteFile } = await import('./cloudflare-r2');
+        await deleteFile(filePath);
+        
+        console.log('File deleted from R2 successfully:', filePath);
+      } catch (r2Error) {
+        console.error('Error deleting file from R2:', r2Error);
+        // Continuar con la eliminación de la base de datos aunque falle R2
+      }
+    } else {
+      console.log('Photo uses base64 storage, skipping R2 deletion');
+    }
+
+    // Eliminar la foto de la base de datos
     const { error: deleteError } = await supabase
       .from('photos')
       .delete()
       .eq('id', photoId);
 
     if (deleteError) {
-      console.error('Error deleting photo:', deleteError);
+      console.error('Error deleting photo from database:', deleteError);
       return false;
     }
 
+    console.log('Photo deleted successfully from database');
     return true;
   } catch (error) {
     console.error('Error in deletePhoto:', error);
