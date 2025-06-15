@@ -38,6 +38,18 @@ export default function Gallery({ photos: initialPhotos, currentUserId, currentU
   const [loading, setLoading] = useState(!initialPhotos);
   const [isClient, setIsClient] = useState(false);
   const [deletingPhotoId, setDeletingPhotoId] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState<string>('');
+  
+  // Filtrar fotos basado en el término de búsqueda
+  const filteredPhotos = photos.filter(photo => {
+    if (!searchTerm.trim()) return true;
+    
+    const searchLower = searchTerm.toLowerCase();
+    const titleMatch = photo.title.toLowerCase().includes(searchLower);
+    const userMatch = formatUploadedBy(photo.uploaded_by).toLowerCase().includes(searchLower);
+    
+    return titleMatch || userMatch;
+  });
 
   useEffect(() => {
     setIsClient(true);
@@ -119,11 +131,24 @@ export default function Gallery({ photos: initialPhotos, currentUserId, currentU
 
   const closeModal = () => {
     setSelectedPhoto(null);
-  };
-
-  if (loading) {
+  };  if (loading) {
     return (
       <div className="container-fluid p-4">
+        {/* Barra de búsqueda (deshabilitada durante carga) */}
+        <div className="row mb-4">
+          <div className="col-12 col-md-8 col-lg-6 mx-auto">
+            <div className="search-container loading">
+              <i className="bi bi-search search-icon"></i>
+              <input
+                type="text"
+                className="search-input"
+                placeholder="Buscar por título o usuario..."
+                value=""
+                disabled
+              />
+            </div>
+          </div>
+        </div>
         <div className="d-flex justify-content-center">
           <div className="spinner-border text-primary" role="status">
             <span className="visually-hidden">Cargando...</span>
@@ -165,10 +190,34 @@ export default function Gallery({ photos: initialPhotos, currentUserId, currentU
   }
 
   return (
-    <div className="container-fluid p-4">
+    <div className="container-fluid p-4">      {/* Barra de búsqueda */}
+      <div className="row mb-4">
+        <div className="col-12 col-md-8 col-lg-6 mx-auto">
+          <div className="search-container">
+            <i className="bi bi-search search-icon"></i>
+            <input
+              type="text"
+              className="search-input"
+              placeholder="Buscar por título o usuario..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+            {searchTerm && (
+              <button 
+                className="clear-search-btn"
+                onClick={() => setSearchTerm('')}
+                title="Limpiar búsqueda"
+              >
+                <i className="bi bi-x-circle-fill"></i>
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
       {/* Grid de fotos */}
       <div className="row g-4">
-        {photos.map((photo) => (          <div key={photo.id} className="col-12 col-sm-6 col-md-4 col-lg-3">
+        {filteredPhotos.map((photo) => (          <div key={photo.id} className="col-12 col-sm-6 col-md-4 col-lg-3">
             <div 
               className="photo-card position-relative"
               onClick={() => openModal(photo)}
@@ -212,19 +261,34 @@ export default function Gallery({ photos: initialPhotos, currentUserId, currentU
             </div>
           </div>
         ))}
-      </div>
-
-      {photos.length === 0 && (
+      </div>      {/* Estado vacío - cuando no hay fotos o no hay resultados de búsqueda */}
+      {filteredPhotos.length === 0 && (
         <div className="empty-state">
           <div className="empty-icon">
-            <i className="bi bi-images"></i>
+            <i className={searchTerm.trim() ? "bi bi-search" : "bi bi-images"}></i>
           </div>
-          <h5>No hay fotos disponibles</h5>
-          <p>Sube tu primera imagen para comenzar</p>
-          <a href="/upload" className="btn btn-primary btn-upload-cta">
-            <i className="bi bi-cloud-arrow-up me-2"></i>
-            Subir primera imagen
-          </a>
+          {searchTerm.trim() ? (
+            <>
+              <h5>No se encontraron resultados</h5>
+              <p>No hay fotos que coincidan con "{searchTerm}"</p>
+              <button 
+                className="btn btn-outline-primary"
+                onClick={() => setSearchTerm('')}
+              >
+                <i className="bi bi-arrow-clockwise me-2"></i>
+                Limpiar búsqueda
+              </button>
+            </>
+          ) : (
+            <>
+              <h5>No hay fotos disponibles</h5>
+              <p>Sube tu primera imagen para comenzar</p>
+              <a href="/upload" className="btn btn-primary btn-upload-cta">
+                <i className="bi bi-cloud-arrow-up me-2"></i>
+                Subir primera imagen
+              </a>
+            </>
+          )}
         </div>
       )}
 
@@ -489,14 +553,141 @@ export default function Gallery({ photos: initialPhotos, currentUserId, currentU
             transform: translateY(-4px);
           }
         }
-        
-        @media (max-width: 576px) {
+          @media (max-width: 576px) {
           .photo-card {
             height: 220px;
           }
           
           .overlay-icon {
             font-size: 2rem;
+          }        }
+        
+        /* Estilos mejorados para la búsqueda */
+        .search-container {
+          position: relative;
+          display: flex;
+          align-items: center;
+          background: rgba(255, 255, 255, 0.95);
+          backdrop-filter: blur(20px);
+          border-radius: 25px;
+          border: 2px solid transparent;
+          box-shadow: 
+            0 8px 32px rgba(0, 0, 0, 0.1),
+            0 1px 2px rgba(0, 0, 0, 0.05);
+          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          overflow: hidden;
+        }
+        
+        .search-container:focus-within {
+          border-color: #667eea;
+          box-shadow: 
+            0 0 0 4px rgba(102, 126, 234, 0.15),
+            0 12px 40px rgba(102, 126, 234, 0.2),
+            0 1px 2px rgba(0, 0, 0, 0.05);
+          transform: translateY(-2px);
+        }
+        
+        .search-container.loading {
+          opacity: 0.7;
+          pointer-events: none;
+        }
+        
+        .search-icon {
+          position: absolute;
+          left: 20px;
+          color: #9ca3af;
+          font-size: 18px;
+          z-index: 2;
+          transition: color 0.3s ease;
+        }
+        
+        .search-container:focus-within .search-icon {
+          color: #667eea;
+        }
+        
+        .search-input {
+          width: 100%;
+          padding: 16px 60px 16px 50px;
+          border: none;
+          background: transparent;
+          font-size: 16px;
+          font-weight: 500;
+          color: #374151;
+          outline: none;
+          transition: all 0.3s ease;
+        }
+        
+        .search-input::placeholder {
+          color: #9ca3af;
+          font-weight: 400;
+        }
+        
+        .search-input:focus::placeholder {
+          color: transparent;
+        }
+        
+        .clear-search-btn {
+          position: absolute;
+          right: 15px;
+          background: none;
+          border: none;
+          color: #9ca3af;
+          font-size: 18px;
+          cursor: pointer;
+          padding: 5px;
+          border-radius: 50%;
+          transition: all 0.3s ease;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        
+        .clear-search-btn:hover {
+          color: #ef4444;
+          background: rgba(239, 68, 68, 0.1);
+          transform: scale(1.1);
+        }
+        
+        .form-control:focus {
+          border-color: #667eea !important;
+          box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25) !important;
+        }
+        
+        .btn-outline-primary {
+          border-color: #667eea;
+          color: #667eea;
+          border-radius: 12px;
+          padding: 0.75rem 2rem;
+          font-weight: 600;
+          transition: all 0.3s ease;
+        }
+        
+        .btn-outline-primary:hover {
+          background-color: #667eea;
+          border-color: #667eea;
+          transform: translateY(-2px);
+          box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+        
+        /* Responsive para la búsqueda */
+        @media (max-width: 768px) {
+          .search-container {
+            border-radius: 20px;
+          }
+          
+          .search-input {
+            padding: 14px 50px 14px 45px;
+            font-size: 15px;
+          }
+          
+          .search-icon {
+            left: 15px;
+            font-size: 16px;
+          }
+          
+          .clear-search-btn {
+            right: 12px;
+            font-size: 16px;
           }
         }
       `}</style>
