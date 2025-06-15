@@ -168,10 +168,9 @@ export default function Gallery({ photos: initialPhotos, currentUserId, currentU
     <div className="container-fluid p-4">
       {/* Grid de fotos */}
       <div className="row g-4">
-        {photos.map((photo) => (
-          <div key={photo.id} className="col-12 col-sm-6 col-md-4 col-lg-3">
+        {photos.map((photo) => (          <div key={photo.id} className="col-12 col-sm-6 col-md-4 col-lg-3">
             <div 
-              className="modern-card position-relative"
+              className="photo-card position-relative"
               onClick={() => openModal(photo)}
             >
               {/* Botón de eliminar */}
@@ -188,26 +187,28 @@ export default function Gallery({ photos: initialPhotos, currentUserId, currentU
                 )}
               </button>
 
-              <div className="image-container">
-                <img
-                  src={photo.image_data}
-                  className="card-image"
-                  alt={photo.title}
-                  loading="lazy"
-                />
-                <div className="image-overlay">
-                  <i className="bi bi-eye overlay-icon"></i>
-                </div>
+              {/* Imagen de fondo que ocupa toda la card */}
+              <img
+                src={photo.image_data}
+                className="card-background-image"
+                alt={photo.title}
+                loading="lazy"
+              />
+              
+              {/* Overlay de hover para el icono */}
+              <div className="hover-overlay">
+                <i className="bi bi-eye overlay-icon"></i>
               </div>
               
-              <div className="card-content">
-                <h6 className="card-title">{photo.title}</h6>
-                <div className="card-meta">
-                  <span className="uploaded-by">
+              {/* Contenido de texto superpuesto */}
+              <div className="text-overlay">
+                <h6 className="overlay-title">{photo.title}</h6>
+                <div className="overlay-meta">
+                  <span className="overlay-author">
                     <i className="bi bi-person-circle me-1"></i>
                     {formatUploadedBy(photo.uploaded_by)}
                   </span>
-                  <span className="upload-date">
+                  <span className="overlay-date">
                     <i className="bi bi-calendar3 me-1"></i>
                     {new Date(photo.uploaded_at).toLocaleDateString()}
                   </span>
@@ -294,51 +295,44 @@ export default function Gallery({ photos: initialPhotos, currentUserId, currentU
             </div>
           </div>
         </div>
-      )}
-
-      <style>{`
-        .modern-card {
-          background: rgba(255, 255, 255, 0.9);
-          backdrop-filter: blur(16px);
+      )}      <style>{`
+        .photo-card {
+          position: relative;
+          width: 100%;
+          height: 300px;
           border-radius: 20px;
-          padding: 0;
+          overflow: hidden;
           cursor: pointer;
           transition: all 0.3s ease;
-          border: 1px solid rgba(255, 255, 255, 0.2);
-          box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-          overflow: hidden;
+          box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
         }
         
-        .modern-card:hover {
+        .photo-card:hover {
           transform: translateY(-8px);
-          box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
-          border-color: rgba(102, 126, 234, 0.3);
+          box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25);
         }
         
-        .image-container {
-          position: relative;
-          overflow: hidden;
-          border-radius: 20px 20px 0 0;
-        }
-        
-        .card-image {
+        .card-background-image {
+          position: absolute;
+          top: 0;
+          left: 0;
           width: 100%;
-          height: 220px;
+          height: 100%;
           object-fit: cover;
           transition: transform 0.3s ease;
         }
         
-        .modern-card:hover .card-image {
+        .photo-card:hover .card-background-image {
           transform: scale(1.05);
         }
         
-        .image-overlay {
+        .hover-overlay {
           position: absolute;
           top: 0;
           left: 0;
           right: 0;
           bottom: 0;
-          background: rgba(0, 0, 0, 0.4);
+          background: rgba(0, 0, 0, 0.3);
           display: flex;
           align-items: center;
           justify-content: center;
@@ -346,19 +340,61 @@ export default function Gallery({ photos: initialPhotos, currentUserId, currentU
           transition: all 0.3s ease;
         }
         
-        .modern-card:hover .image-overlay {
+        .photo-card:hover .hover-overlay {
           opacity: 1;
         }
         
         .overlay-icon {
           color: white;
-          font-size: 2rem;
+          font-size: 2.5rem;
           transform: scale(0.8);
           transition: transform 0.3s ease;
+          text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
         }
         
-        .modern-card:hover .overlay-icon {
+        .photo-card:hover .overlay-icon {
           transform: scale(1);
+        }
+        
+        .text-overlay {
+          position: absolute;
+          bottom: 0;
+          left: 0;
+          right: 0;
+          background: linear-gradient(transparent, rgba(0, 0, 0, 0.8));
+          padding: 2rem 1.5rem 1.5rem;
+          color: white;
+        }
+        
+        .overlay-title {
+          font-size: 1.1rem;
+          font-weight: 600;
+          margin-bottom: 0.75rem;
+          line-height: 1.3;
+          text-shadow: 0 2px 4px rgba(0, 0, 0, 0.7);
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+        }
+        
+        .overlay-meta {
+          display: flex;
+          flex-direction: column;
+          gap: 0.5rem;
+          font-size: 0.875rem;
+        }
+        
+        .overlay-author, .overlay-date {
+          display: flex;
+          align-items: center;
+          color: rgba(255, 255, 255, 0.9);
+          text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
+        }
+        
+        .overlay-author i, .overlay-date i {
+          font-size: 1rem;
+          color: rgba(255, 255, 255, 0.8);
         }
         
         .delete-btn {
@@ -381,48 +417,13 @@ export default function Gallery({ photos: initialPhotos, currentUserId, currentU
           backdrop-filter: blur(8px);
         }
         
-        .modern-card:hover .delete-btn {
+        .photo-card:hover .delete-btn {
           opacity: 1;
         }
         
         .delete-btn:hover {
           background: rgba(220, 53, 69, 1);
           transform: scale(1.1);
-        }
-        
-        .card-content {
-          padding: 1.25rem;
-        }
-        
-        .card-title {
-          font-size: 1.1rem;
-          font-weight: 600;
-          color: #2d3748;
-          margin-bottom: 0.75rem;
-          line-height: 1.3;
-          display: -webkit-box;
-          -webkit-line-clamp: 2;
-          -webkit-box-orient: vertical;
-          overflow: hidden;
-        }
-        
-        .card-meta {
-          display: flex;
-          flex-direction: column;
-          gap: 0.5rem;
-        }
-        
-        .uploaded-by, .upload-date {
-          display: flex;
-          align-items: center;
-          font-size: 0.875rem;
-          color: #718096;
-          font-weight: 500;
-        }
-        
-        .uploaded-by i, .upload-date i {
-          font-size: 1rem;
-          color: #667eea;
         }
         
         .empty-state {
@@ -467,16 +468,34 @@ export default function Gallery({ photos: initialPhotos, currentUserId, currentU
         }
         
         @media (max-width: 768px) {
-          .card-content {
-            padding: 1rem;
+          .photo-card {
+            height: 250px;
           }
           
-          .card-image {
-            height: 180px;
+          .text-overlay {
+            padding: 1.5rem 1rem 1rem;
           }
           
-          .modern-card:hover {
+          .overlay-title {
+            font-size: 1rem;
+          }
+          
+          .overlay-meta {
+            font-size: 0.8rem;
+          }
+          
+          .photo-card:hover {
             transform: translateY(-4px);
+          }
+        }
+        
+        @media (max-width: 576px) {
+          .photo-card {
+            height: 220px;
+          }
+          
+          .overlay-icon {
+            font-size: 2rem;
           }
         }
       `}</style>
