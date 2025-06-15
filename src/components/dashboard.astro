@@ -17,6 +17,7 @@ console.log('Dashboard auth info:', {
 
 // Obtener información detallada del usuario
 let userName: string | null = null;
+let userImageUrl: string | null = null;
 if (userId) {
   try {
     // Intenta obtener el username real de Clerk
@@ -28,7 +29,8 @@ if (userId) {
     if (response.ok) {
       const userData = await response.json();
       userName = userData.username || userData.displayName || `user-${userId.slice(-8)}`;
-      console.log('User data fetched:', { userName, userData });
+      userImageUrl = userData.imageUrl || null;
+      console.log('User data fetched:', { userName, userImageUrl, userData });
     } else {
       userName = `user-${userId.slice(-8)}`;
       console.log('User data fetch failed, using fallback:', userName);
@@ -98,6 +100,7 @@ try {
       photos={photos} 
       currentUserId={userId || undefined}
       currentUserName={userName || undefined}
+      currentUserImageUrl={userImageUrl || undefined}
       client:only="react"
     />
   </main>

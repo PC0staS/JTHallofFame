@@ -15,6 +15,7 @@ export interface Photo {
   uploaded_by: string;
   uploaded_at: string;
   user_id?: string;
+  image_url?: string; // URL pública de la imagen
 }
 
 export interface Comment {
@@ -24,6 +25,7 @@ export interface Comment {
   user_name: string;
   comment_text: string;
   created_at: string;
+  user_image_url?: string;
 }
 
 export async function getPhotos(): Promise<Photo[]> {

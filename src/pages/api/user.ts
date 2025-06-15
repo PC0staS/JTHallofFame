@@ -35,7 +35,8 @@ export const GET: APIRoute = async (context) => {
         email: user.emailAddresses[0]?.emailAddress,
         firstName: user.firstName,
         lastName: user.lastName,
-        displayName: user.username || user.firstName || user.emailAddresses[0]?.emailAddress?.split('@')[0]
+        displayName: user.username || user.firstName || user.emailAddresses[0]?.emailAddress?.split('@')[0],
+        imageUrl: user.imageUrl
       }),
       { status: 200 }
     );

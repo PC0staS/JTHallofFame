@@ -31,9 +31,10 @@ interface GalleryProps {
   photos?: Photo[];
   currentUserId?: string;
   currentUserName?: string;
+  currentUserImageUrl?: string;
 }
 
-export default function Gallery({ photos: initialPhotos, currentUserId, currentUserName }: GalleryProps) {
+export default function Gallery({ photos: initialPhotos, currentUserId, currentUserName, currentUserImageUrl }: GalleryProps) {
   const [photos, setPhotos] = useState<Photo[]>(initialPhotos || []);
   const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null);
   const [loading, setLoading] = useState(!initialPhotos);
@@ -41,6 +42,7 @@ export default function Gallery({ photos: initialPhotos, currentUserId, currentU
   const [deletingPhotoId, setDeletingPhotoId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [showComments, setShowComments] = useState<string | null>(null);
+  const [commentCounts, setCommentCounts] = useState<Record<string, number>>({});
   
   // Filtrar fotos basado en el término de búsqueda
   const filteredPhotos = photos.filter(photo => {
@@ -59,10 +61,13 @@ export default function Gallery({ photos: initialPhotos, currentUserId, currentU
       loadPhotos();
     } else {
       // Aplicar proxy a las URLs de las fotos
-      setPhotos(initialPhotos.map((photo: Photo) => ({
+      const photosWithProxy = initialPhotos.map((photo: Photo) => ({
         ...photo,
         image_data: toProxyUrl(photo.image_data)
-      })));
+      }));
+      setPhotos(photosWithProxy);
+      // Cargar conteos de comentarios para las fotos iniciales
+      loadCommentCounts(photosWithProxy);
     }
   }, [initialPhotos]);
 
@@ -71,6 +76,14 @@ export default function Gallery({ photos: initialPhotos, currentUserId, currentU
     const handleRefreshPhotos = () => {
       console.log('Refresh photos event received');
       loadPhotos();
+      
+      // Si hay comentarios abiertos, crear evento para refrescarlos también
+      if (showComments) {
+        const refreshCommentsEvent = new CustomEvent('refreshComments', {
+          detail: { photoId: showComments }
+        });
+        window.dispatchEvent(refreshCommentsEvent);
+      }
     };
 
     window.addEventListener('refreshPhotos', handleRefreshPhotos);
@@ -78,16 +91,21 @@ export default function Gallery({ photos: initialPhotos, currentUserId, currentU
     return () => {
       window.removeEventListener('refreshPhotos', handleRefreshPhotos);
     };
-  }, []);
+  }, [showComments]); // Añadido showComments como dependencia
 
   const loadPhotos = async () => {
     setLoading(true);
     const fetchedPhotos = await getPhotosFromSupabase();
     // Aplicar proxy a las URLs
-    setPhotos(fetchedPhotos.map((photo: Photo) => ({
+    const photosWithProxy = fetchedPhotos.map((photo: Photo) => ({
       ...photo,
       image_data: toProxyUrl(photo.image_data)
-    })));
+    }));
+    setPhotos(photosWithProxy);
+    
+    // Cargar conteos de comentarios
+    await loadCommentCounts(photosWithProxy);
+    
     setLoading(false);
   };
 
@@ -133,7 +151,47 @@ export default function Gallery({ photos: initialPhotos, currentUserId, currentU
 
   const closeModal = () => {
     setSelectedPhoto(null);
-  };  if (loading) {
+  };
+
+  // Función para actualizar el conteo de comentarios de una foto específica
+  const updateCommentCount = (photoId: string, newCount: number) => {
+    setCommentCounts(prev => ({
+      ...prev,
+      [photoId]: newCount
+    }));
+  };
+
+  // Función para cargar conteos de comentarios
+  const loadCommentCounts = async (photoList: Photo[]) => {
+    const counts: Record<string, number> = {};
+    
+    // Cargar conteos en paralelo
+    await Promise.all(
+      photoList.map(async (photo) => {
+        try {
+          const response = await fetch(`/api/comments?photoId=${photo.id}`);
+          if (response.ok) {
+            const data = await response.json();
+            counts[photo.id] = data.comments?.length || 0;
+          }
+        } catch (error) {
+          console.error(`Error loading comment count for photo ${photo.id}:`, error);
+          counts[photo.id] = 0;
+        }
+      })
+    );
+    
+    setCommentCounts(counts);
+  };
+
+  // Cargar conteos de comentarios al cargar las fotos
+  useEffect(() => {
+    if (photos.length > 0) {
+      loadCommentCounts(photos);
+    }
+  }, [photos]);
+
+  if (loading) {
     return (
       <div className="container-fluid p-4">
         {/* Barra de búsqueda (deshabilitada durante carga) */}
@@ -262,20 +320,25 @@ export default function Gallery({ photos: initialPhotos, currentUserId, currentU
                 
                 {/* Botón de comentarios en el overlay */}
                 <button
-                  className="overlay-comments-btn"
+                  className={`overlay-comments-btn ${commentCounts[photo.id] > 0 ? 'has-comments' : ''}`}
                   onClick={(e) => {
                     e.stopPropagation();
                     setShowComments(photo.id);
                   }}
-                  title="Ver comentarios"
+                  title={`Ver comentarios${commentCounts[photo.id] ? ` (${commentCounts[photo.id]})` : ''}`}
                 >
                   <i className="bi bi-chat-dots"></i>
+                  {commentCounts[photo.id] !== undefined && commentCounts[photo.id] > 0 && (
+                    <span className="comment-count">{commentCounts[photo.id]}</span>
+                  )}
                 </button>
               </div>
             </div>
           </div>
         ))}
-      </div>      {/* Estado vacío - cuando no hay fotos o no hay resultados de búsqueda */}
+      </div>
+
+      {/* Estado vacío - cuando no hay fotos o no hay resultados de búsqueda */}
       {filteredPhotos.length === 0 && (
         <div className="empty-state">
           <div className="empty-icon">
@@ -388,10 +451,14 @@ export default function Gallery({ photos: initialPhotos, currentUserId, currentU
           photoId={showComments}
           currentUserId={currentUserId}
           currentUserName={currentUserName}
+          currentUserImageUrl={currentUserImageUrl}
           isOpen={!!showComments}
           onClose={() => setShowComments(null)}
+          onCommentUpdate={updateCommentCount}
         />
-      )}      <style>{`
+      )}
+
+      <style>{`
         .photo-card {
           position: relative;
           width: 100%;
@@ -531,29 +598,74 @@ export default function Gallery({ photos: initialPhotos, currentUserId, currentU
         .overlay-comments-btn {
           position: absolute;
           bottom: 16px;
-          right: 16px;
-          width: 40px;
-          height: 40px;
+          right: 8px;
+          width: 48px;
+          height: 48px;
           border-radius: 50%;
           border: none;
-          background: rgba(102, 126, 234, 0.9);
+          background: rgba(255, 255, 255, 0.2);
           color: white;
           display: flex;
           align-items: center;
           justify-content: center;
-          font-size: 16px;
+          font-size: 18px;
           cursor: pointer;
           transition: all 0.3s ease;
-          backdrop-filter: blur(8px);
-          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+          backdrop-filter: blur(15px);
+          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+          border: 2px solid rgba(255, 255, 255, 0.3);
         }
         
         .overlay-comments-btn:hover {
-          background: rgba(102, 126, 234, 1);
-          transform: scale(1.1);
-          box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+          background: rgba(255, 255, 255, 0.3);
+          transform: scale(1.05);
+          box-shadow: 0 6px 25px rgba(0, 0, 0, 0.3);
+          border: 2px solid rgba(255, 255, 255, 0.5);
         }
         
+        .overlay-comments-btn.has-comments {
+          background: rgba(255, 255, 255, 0.25);
+          box-shadow: 0 6px 25px rgba(0, 0, 0, 0.3);
+        }
+        
+        .overlay-comments-btn.has-comments:hover {
+          background: rgba(255, 255, 255, 0.4);
+        }
+        
+        .comment-count {
+          position: absolute;
+          top: -6px;
+          right: -6px;
+          background: linear-gradient(135deg, #ff4757 0%, #ff3742 100%);
+          color: white;
+          border-radius: 50%;
+          min-width: 24px;
+          height: 24px;
+          font-size: 13px;
+          font-weight: 700;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border: 3px solid white;
+          box-shadow: 0 3px 8px rgba(255, 71, 87, 0.4);
+          animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+          0% {
+            transform: scale(1);
+            box-shadow: 0 3px 8px rgba(255, 71, 87, 0.4);
+          }
+          50% {
+            transform: scale(1.1);
+            box-shadow: 0 4px 12px rgba(255, 71, 87, 0.6);
+          }
+          100% {
+            transform: scale(1);
+            box-shadow: 0 3px 8px rgba(255, 71, 87, 0.4);
+          }
+        }
+
         .empty-state {
           text-align: center;
           padding: 4rem 2rem;
@@ -614,6 +726,23 @@ export default function Gallery({ photos: initialPhotos, currentUserId, currentU
           
           .photo-card:hover {
             transform: translateY(-4px);
+          }
+          
+          .overlay-comments-btn {
+            width: 42px;
+            height: 42px;
+            bottom: 12px;
+            right: 6px;
+            font-size: 16px;
+          }
+          
+          .comment-count {
+            min-width: 22px;
+            height: 22px;
+            font-size: 12px;
+            top: -5px;
+            right: -5px;
+            border: 2px solid white;
           }
           
           .overlay-comments-btn {

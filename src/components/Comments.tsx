@@ -7,22 +7,85 @@ export interface Comment {
   user_name: string;
   comment_text: string;
   created_at: string;
+  user_image_url?: string;
 }
 
 interface CommentsProps {
   photoId: string;
   currentUserId?: string;
   currentUserName?: string;
+  currentUserImageUrl?: string;
   isOpen: boolean;
   onClose: () => void;
+  onCommentUpdate?: (photoId: string, newCount: number) => void;
 }
 
-export default function Comments({ photoId, currentUserId, currentUserName, isOpen, onClose }: CommentsProps) {
+export default function Comments({ photoId, currentUserId, currentUserName, currentUserImageUrl, isOpen, onClose, onCommentUpdate }: CommentsProps) {
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState('');
   const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  // Función para generar avatar basado en el nombre
+  const generateAvatar = (userName: string) => {
+    const initials = userName
+      .split(' ')
+      .map(word => word.charAt(0))
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+    
+    // Generar color basado en el nombre
+    let hash = 0;
+    for (let i = 0; i < userName.length; i++) {
+      hash = userName.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    
+    const hue = hash % 360;
+    const backgroundColor = `hsl(${hue}, 65%, 55%)`;
+    
+    return { initials, backgroundColor };
+  };
+
+  // Función para renderizar avatar (imagen real o iniciales)
+  const renderAvatar = (userName: string, imageUrl?: string, size: 'small' | 'normal' = 'normal') => {
+    const avatar = generateAvatar(userName);
+    
+    if (imageUrl) {
+      return (
+        <div className="avatar-container">
+          <img 
+            src={imageUrl} 
+            alt={userName}
+            className={`avatar-image ${size}`}
+            onError={(e) => {
+              // Si la imagen falla al cargar, mostrar avatar con iniciales
+              const target = e.target as HTMLImageElement;
+              const container = target.parentElement;
+              if (container) {
+                container.innerHTML = `
+                  <div class="avatar-circle ${size}" style="background-color: ${avatar.backgroundColor}">
+                    ${avatar.initials}
+                  </div>
+                `;
+              }
+            }}
+          />
+        </div>
+      );
+    }
+    
+    return (
+      <div 
+        className={`avatar-circle ${size}`}
+        style={{ backgroundColor: avatar.backgroundColor }}
+      >
+        {avatar.initials}
+      </div>
+    );
+  };
 
   // Cargar comentarios cuando se abre el modal
   useEffect(() => {
@@ -31,18 +94,52 @@ export default function Comments({ photoId, currentUserId, currentUserName, isOp
     }
   }, [isOpen, photoId]);
 
-  const loadComments = async () => {
-    setLoading(true);
+  // Escuchar evento de refresh desde la galería
+  useEffect(() => {
+    const handleRefreshComments = (event: CustomEvent) => {
+      if (event.detail?.photoId === photoId && isOpen) {
+        console.log('Refreshing comments for photo:', photoId);
+        loadComments(true); // Pasar true para indicar que es un refresh
+      }
+    };
+
+    window.addEventListener('refreshComments', handleRefreshComments as EventListener);
+
+    return () => {
+      window.removeEventListener('refreshComments', handleRefreshComments as EventListener);
+    };
+  }, [photoId, isOpen]);
+
+  const loadComments = async (isRefresh = false) => {
+    if (isRefresh) {
+      setRefreshing(true);
+    } else {
+      setLoading(true);
+    }
+    
     try {
       const response = await fetch(`/api/comments?photoId=${photoId}`);
       if (response.ok) {
         const data = await response.json();
-        setComments(data.comments || []);
+        const newComments = data.comments || [];
+        setComments(newComments);
+        
+        // Actualizar conteo en el componente padre
+        if (onCommentUpdate) {
+          onCommentUpdate(photoId, newComments.length);
+        }
+        
+        if (isRefresh) {
+          // Mostrar brevemente que se han refrescado
+          setTimeout(() => setRefreshing(false), 1000);
+        }
       }
     } catch (error) {
       console.error('Error loading comments:', error);
     } finally {
-      setLoading(false);
+      if (!isRefresh) {
+        setLoading(false);
+      }
     }
   };
 
@@ -66,8 +163,14 @@ export default function Comments({ photoId, currentUserId, currentUserName, isOp
 
       if (response.ok) {
         const data = await response.json();
-        setComments([...comments, data.comment]);
+        const newComments = [...comments, data.comment];
+        setComments(newComments);
         setNewComment('');
+        
+        // Actualizar conteo en el componente padre
+        if (onCommentUpdate) {
+          onCommentUpdate(photoId, newComments.length);
+        }
       } else {
         alert('Error al añadir el comentario');
       }
@@ -89,7 +192,13 @@ export default function Comments({ photoId, currentUserId, currentUserName, isOp
       });
 
       if (response.ok) {
-        setComments(comments.filter(c => c.id !== commentId));
+        const newComments = comments.filter(c => c.id !== commentId);
+        setComments(newComments);
+        
+        // Actualizar conteo en el componente padre
+        if (onCommentUpdate) {
+          onCommentUpdate(photoId, newComments.length);
+        }
       } else {
         alert('Error al eliminar el comentario');
       }
@@ -125,10 +234,25 @@ export default function Comments({ photoId, currentUserId, currentUserName, isOp
           <h5 className="comments-title">
             <i className="bi bi-chat-dots me-2"></i>
             Comentarios ({comments.length})
+            {refreshing && (
+              <span className="refresh-indicator">
+                <i className="bi bi-arrow-clockwise spinning"></i>
+              </span>
+            )}
           </h5>
-          <button className="comments-close-btn" onClick={onClose}>
-            <i className="bi bi-x-lg"></i>
-          </button>
+          <div className="comments-header-actions">
+            <button 
+              className="comments-refresh-btn" 
+              onClick={() => loadComments(true)}
+              disabled={refreshing || loading}
+              title="Refrescar comentarios"
+            >
+              <i className={`bi bi-arrow-clockwise ${refreshing ? 'spinning' : ''}`}></i>
+            </button>
+            <button className="comments-close-btn" onClick={onClose}>
+              <i className="bi bi-x-lg"></i>
+            </button>
+          </div>
         </div>
 
         <div className="comments-body">
@@ -145,34 +269,36 @@ export default function Comments({ photoId, currentUserId, currentUserName, isOp
             </div>
           ) : (
             <div className="comments-list">
-              {comments.map((comment) => (
-                <div key={comment.id} className="comment-item">
-                  <div className="comment-avatar">
-                    <i className="bi bi-person-circle"></i>
-                  </div>
-                  <div className="comment-content">
-                    <div className="comment-header">
-                      <span className="comment-author">{comment.user_name}</span>
-                      <span className="comment-date">{formatDate(comment.created_at)}</span>
-                      {currentUserId === comment.user_id && (
-                        <button
-                          className="comment-delete-btn"
-                          onClick={() => deleteComment(comment.id)}
-                          disabled={deletingId === comment.id}
-                          title="Eliminar comentario"
-                        >
-                          {deletingId === comment.id ? (
-                            <span className="spinner-border spinner-border-sm"></span>
-                          ) : (
-                            <i className="bi bi-trash3"></i>
-                          )}
-                        </button>
-                      )}
+              {comments.map((comment) => {
+                return (
+                  <div key={comment.id} className="comment-item">
+                    <div className="comment-avatar">
+                      {renderAvatar(comment.user_name, comment.user_image_url)}
                     </div>
-                    <p className="comment-text">{comment.comment_text}</p>
+                    <div className="comment-content">
+                      <div className="comment-header">
+                        <span className="comment-author">{comment.user_name}</span>
+                        <span className="comment-date">{formatDate(comment.created_at)}</span>
+                        {currentUserId === comment.user_id && (
+                          <button
+                            className="comment-delete-btn"
+                            onClick={() => deleteComment(comment.id)}
+                            disabled={deletingId === comment.id}
+                            title="Eliminar comentario"
+                          >
+                            {deletingId === comment.id ? (
+                              <span className="spinner-border spinner-border-sm"></span>
+                            ) : (
+                              <i className="bi bi-trash3"></i>
+                            )}
+                          </button>
+                        )}
+                      </div>
+                      <p className="comment-text">{comment.comment_text}</p>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
@@ -182,7 +308,11 @@ export default function Comments({ photoId, currentUserId, currentUserName, isOp
             <form onSubmit={submitComment} className="comment-form">
               <div className="comment-input-group">
                 <div className="comment-input-avatar">
-                  <i className="bi bi-person-circle"></i>
+                  {currentUserName ? (
+                    renderAvatar(currentUserName, currentUserImageUrl, 'small')
+                  ) : (
+                    <i className="bi bi-person-circle"></i>
+                  )}
                 </div>
                 <textarea
                   className="comment-input"
@@ -256,12 +386,57 @@ export default function Comments({ photoId, currentUserId, currentUserName, isOp
             background: #f8f9fa;
           }
 
+          .comments-header-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+          }
+
+          .comments-refresh-btn {
+            background: none;
+            border: none;
+            font-size: 16px;
+            color: #6c757d;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 8px;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          }
+
+          .comments-refresh-btn:hover:not(:disabled) {
+            background: #e9ecef;
+            color: #667eea;
+          }
+
+          .comments-refresh-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+          }
+
           .comments-title {
             margin: 0;
             color: #495057;
             font-weight: 600;
             display: flex;
             align-items: center;
+            gap: 8px;
+          }
+
+          .refresh-indicator {
+            color: #667eea;
+            font-size: 14px;
+          }
+
+          .spinning {
+            animation: spin 1s linear infinite;
+          }
+
+          @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
           }
 
           .comments-close-btn {
@@ -334,6 +509,44 @@ export default function Comments({ photoId, currentUserId, currentUserName, isOp
             color: #6c757d;
           }
 
+          .avatar-circle {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: 16px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+            border: 2px solid white;
+          }
+
+          .avatar-circle.small {
+            width: 32px;
+            height: 32px;
+            font-size: 14px;
+          }
+
+          .avatar-image {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            object-fit: cover;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+            border: 2px solid white;
+          }
+
+          .avatar-image.small {
+            width: 32px;
+            height: 32px;
+          }
+
+          .hidden {
+            display: none !important;
+          }
+
           .comment-content {
             flex: 1;
             min-width: 0;
@@ -404,6 +617,12 @@ export default function Comments({ photoId, currentUserId, currentUserName, isOp
           .comment-input-avatar i {
             font-size: 28px;
             color: #6c757d;
+          }
+
+          .comment-input-avatar .avatar-circle {
+            width: 32px;
+            height: 32px;
+            font-size: 14px;
           }
 
           .comment-input {
@@ -488,6 +707,18 @@ export default function Comments({ photoId, currentUserId, currentUserName, isOp
 
             .comment-actions {
               margin-left: 36px;
+            }
+
+            .avatar-circle {
+              width: 36px;
+              height: 36px;
+              font-size: 15px;
+            }
+
+            .avatar-circle.small {
+              width: 28px;
+              height: 28px;
+              font-size: 12px;
             }
           }
         `}</style>
