@@ -156,8 +156,7 @@ export default function Comments({ photoId, currentUserId, currentUserName, curr
         },
         body: JSON.stringify({
           photoId,
-          commentText: newComment.trim(),
-          userName: currentUserName
+          commentText: newComment.trim()
         }),
       });
 

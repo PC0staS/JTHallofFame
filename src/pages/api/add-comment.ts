@@ -3,11 +3,13 @@
 
 import type { APIRoute } from 'astro';
 import { addComment } from '../../lib/supabase';
+import { clerkClient } from '@clerk/astro/server';
 
 export const prerender = false;
 
-export const POST: APIRoute = async ({ request, locals }) => {
+export const POST: APIRoute = async (context) => {
   try {
+    const { request, locals } = context;
     const auth = locals.auth();
     
     if (!auth.userId) {
@@ -20,7 +22,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
     }
 
     const body = await request.json();
-    const { photoId, commentText, userName } = body;
+    const { photoId, commentText } = body;
 
     if (!photoId || !commentText?.trim()) {
       return new Response(JSON.stringify({ 
@@ -31,8 +33,15 @@ export const POST: APIRoute = async ({ request, locals }) => {
       });
     }
 
-    // Usar el userName proporcionado o crear un fallback
-    const displayName = userName || `user-${auth.userId.slice(-8)}`;
+    // Obtener el nombre real del usuario desde Clerk
+    let displayName = `user-${auth.userId.slice(-8)}`;
+    try {
+      const user = await clerkClient(context).users.getUser(auth.userId);
+      displayName = user.username || user.firstName || user.emailAddresses[0]?.emailAddress?.split('@')[0] || displayName;
+    } catch (userError) {
+      console.warn('Could not fetch user data for comment:', userError);
+      // Usar el fallback si falla
+    }
 
     const comment = await addComment(photoId, auth.userId, displayName, commentText);
 
