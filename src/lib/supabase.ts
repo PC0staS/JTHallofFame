@@ -14,6 +14,16 @@ export interface Photo {
   image_name: string;
   uploaded_by: string;
   uploaded_at: string;
+  user_id?: string;
+}
+
+export interface Comment {
+  id: string;
+  photo_id: string;
+  user_id: string;
+  user_name: string;
+  comment_text: string;
+  created_at: string;
 }
 
 export async function getPhotos(): Promise<Photo[]> {
@@ -330,6 +340,84 @@ export async function deletePhoto(photoId: string): Promise<boolean> {
     return true;
   } catch (error) {
     console.error('Error in deletePhoto:', error);
+    return false;
+  }
+}
+
+// ========== COMENTARIOS ==========
+
+// Obtener comentarios de una foto
+export async function getComments(photoId: string): Promise<Comment[]> {
+  try {
+    const { data, error } = await supabase
+      .from('comments')
+      .select('*')
+      .eq('photo_id', photoId)
+      .order('created_at', { ascending: true });
+
+    if (error) {
+      console.error('Error fetching comments:', error);
+      return [];
+    }
+
+    return data || [];
+  } catch (error) {
+    console.error('Exception in getComments:', error);
+    return [];
+  }
+}
+
+// Añadir un comentario
+export async function addComment(
+  photoId: string,
+  userId: string,
+  userName: string,
+  commentText: string
+): Promise<Comment | null> {
+  try {
+    const { data, error } = await supabase
+      .from('comments')
+      .insert([
+        {
+          photo_id: photoId,
+          user_id: userId,
+          user_name: userName,
+          comment_text: commentText.trim(),
+          created_at: new Date().toISOString()
+        }
+      ])
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error adding comment:', error);
+      return null;
+    }
+
+    return data;
+  } catch (error) {
+    console.error('Exception in addComment:', error);
+    return null;
+  }
+}
+
+// Eliminar un comentario
+export async function deleteComment(commentId: string, userId: string): Promise<boolean> {
+  try {
+    const { error } = await supabase
+      .from('comments')
+      .delete()
+      .eq('id', commentId)
+      .eq('user_id', userId); // Solo el autor puede eliminar su comentario
+
+    if (error) {
+      console.error('Error deleting comment:', error);
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    console.error('Exception in deleteComment:', error);
     return false;
   }
 }

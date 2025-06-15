@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { getPhotos as getPhotosFromSupabase, type Photo } from '../lib/supabase';
+import Comments from './Comments.tsx';
 
 // Utilidad para forzar el uso del proxy para las URLs de R2
 function toProxyUrl(url: string): string {
@@ -39,6 +40,7 @@ export default function Gallery({ photos: initialPhotos, currentUserId, currentU
   const [isClient, setIsClient] = useState(false);
   const [deletingPhotoId, setDeletingPhotoId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState<string>('');
+  const [showComments, setShowComments] = useState<string | null>(null);
   
   // Filtrar fotos basado en el término de búsqueda
   const filteredPhotos = photos.filter(photo => {
@@ -257,6 +259,18 @@ export default function Gallery({ photos: initialPhotos, currentUserId, currentU
                     {new Date(photo.uploaded_at).toLocaleDateString()}
                   </span>
                 </div>
+                
+                {/* Botón de comentarios en el overlay */}
+                <button
+                  className="overlay-comments-btn"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowComments(photo.id);
+                  }}
+                  title="Ver comentarios"
+                >
+                  <i className="bi bi-chat-dots"></i>
+                </button>
               </div>
             </div>
           </div>
@@ -330,7 +344,7 @@ export default function Gallery({ photos: initialPhotos, currentUserId, currentU
                   
                   {/* Botón de eliminar en el modal */}
                   <button
-                    className="btn btn-danger btn-sm"
+                    className="btn btn-danger btn-sm me-2"
                     onClick={(e) => {
                       e.stopPropagation();
                       deletePhoto(selectedPhoto.id);
@@ -349,11 +363,34 @@ export default function Gallery({ photos: initialPhotos, currentUserId, currentU
                       </>
                     )}
                   </button>
+
+                  {/* Botón de comentarios en el modal */}
+                  <button
+                    className="btn btn-primary btn-sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowComments(selectedPhoto.id);
+                    }}
+                  >
+                    <i className="bi bi-chat-dots me-2"></i>
+                    Comentarios
+                  </button>
                 </div>
               </div>
             </div>
           </div>
         </div>
+      )}
+
+      {/* Componente de comentarios */}
+      {showComments && (
+        <Comments
+          photoId={showComments}
+          currentUserId={currentUserId}
+          currentUserName={currentUserName}
+          isOpen={!!showComments}
+          onClose={() => setShowComments(null)}
+        />
       )}      <style>{`
         .photo-card {
           position: relative;
@@ -491,6 +528,32 @@ export default function Gallery({ photos: initialPhotos, currentUserId, currentU
           transform: scale(1.1);
         }
         
+        .overlay-comments-btn {
+          position: absolute;
+          bottom: 16px;
+          right: 16px;
+          width: 40px;
+          height: 40px;
+          border-radius: 50%;
+          border: none;
+          background: rgba(102, 126, 234, 0.9);
+          color: white;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 16px;
+          cursor: pointer;
+          transition: all 0.3s ease;
+          backdrop-filter: blur(8px);
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+        
+        .overlay-comments-btn:hover {
+          background: rgba(102, 126, 234, 1);
+          transform: scale(1.1);
+          box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+        
         .empty-state {
           text-align: center;
           padding: 4rem 2rem;
@@ -551,6 +614,14 @@ export default function Gallery({ photos: initialPhotos, currentUserId, currentU
           
           .photo-card:hover {
             transform: translateY(-4px);
+          }
+          
+          .overlay-comments-btn {
+            width: 36px;
+            height: 36px;
+            bottom: 12px;
+            right: 12px;
+            font-size: 14px;
           }
         }
           @media (max-width: 576px) {

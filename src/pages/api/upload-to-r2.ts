@@ -55,7 +55,7 @@ export const POST: APIRoute = async ({ request }) => {
           title,
           image_data: imageUrl, // Almacenar URL de R2 en image_data
           image_name: file.name,
-          uploaded_by: userName || `user-${userId.slice(-8)}`,
+          uploaded_by: userName || `user-${userId.slice(-8)}`, // Usar exactamente el userName recibido
           user_id: userId,
           uploaded_at: new Date().toISOString()
         }

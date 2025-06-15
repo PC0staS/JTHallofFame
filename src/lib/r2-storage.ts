@@ -45,7 +45,7 @@ export async function uploadPhoto(
       title,
       image_data: result.imageUrl,
       image_name: file.name,
-      uploaded_by: userName || `user-${userId.slice(-8)}`,
+      uploaded_by: userName || `user-${userId.slice(-8)}`, // Usar exactamente el userName recibido
       uploaded_at: new Date().toISOString(),
       user_id: userId
     };
