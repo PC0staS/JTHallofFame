@@ -185,9 +185,7 @@ export default function Gallery({ photos: initialPhotos, currentUserId, currentU
                 ) : (
                   <i className="bi bi-trash"></i>
                 )}
-              </button>
-
-              {/* Imagen de fondo que ocupa toda la card */}
+              </button>              {/* Imagen de fondo que ocupa toda la card */}
               <img
                 src={photo.image_data}
                 className="card-background-image"
@@ -195,11 +193,8 @@ export default function Gallery({ photos: initialPhotos, currentUserId, currentU
                 loading="lazy"
               />
               
-              {/* Overlay de hover para el icono */}
-              <div className="hover-overlay">
-                <i className="bi bi-eye overlay-icon"></i>
-              </div>
-              
+              {/* Glass effect overlay */}
+              <div className="glass-overlay"></div>
               {/* Contenido de texto superpuesto */}
               <div className="text-overlay">
                 <h6 className="overlay-title">{photo.title}</h6>
@@ -322,39 +317,45 @@ export default function Gallery({ photos: initialPhotos, currentUserId, currentU
           transition: transform 0.3s ease;
         }
         
+        .photo-card {
+          transition: box-shadow 0.7s cubic-bezier(.4,1.6,.6,1), border-color 0.7s cubic-bezier(.4,1.6,.6,1), transform 0.4s cubic-bezier(.4,1.6,.6,1);
+          border: 2px solid transparent;
+        }
+        .photo-card:hover {
+          box-shadow:
+            0 0 0 8px rgba(102,126,234,0.18),
+            0 0 24px 8px rgba(102,126,234,0.18),
+            0 8px 32px 0 rgba(102, 126, 234, 0.25),
+            0 1.5px 12px 0 rgba(118, 75, 162, 0.15);
+          border-color: #a3bffa;
+          /* Borde luminoso animado */
+          animation: borderGlow 1.5s linear infinite alternate;
+          transform: scale(1.04);
+        }
+        @keyframes borderGlow {
+          0% {
+            box-shadow:
+              0 0 0 4px rgba(102,126,234,0.10),
+              0 0 24px 4px rgba(102,126,234,0.10),
+              0 8px 32px 0 rgba(102, 126, 234, 0.18),
+              0 1.5px 12px 0 rgba(118, 75, 162, 0.10);
+          }
+          100% {
+            box-shadow:
+              0 0 0 12px rgba(102,126,234,0.22),
+              0 0 32px 16px rgba(102,126,234,0.22),
+              0 8px 32px 0 rgba(102, 126, 234, 0.28),
+              0 1.5px 12px 0 rgba(118, 75, 162, 0.18);
+          }
+        }
+        .photo-card .card-background-image {
+          transition: none;
+        }
         .photo-card:hover .card-background-image {
-          transform: scale(1.05);
+          transform: none;
         }
         
-        .hover-overlay {
-          position: absolute;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          background: rgba(0, 0, 0, 0.3);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          opacity: 0;
-          transition: all 0.3s ease;
-        }
         
-        .photo-card:hover .hover-overlay {
-          opacity: 1;
-        }
-        
-        .overlay-icon {
-          color: white;
-          font-size: 2.5rem;
-          transform: scale(0.8);
-          transition: transform 0.3s ease;
-          text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
-        }
-        
-        .photo-card:hover .overlay-icon {
-          transform: scale(1);
-        }
         
         .text-overlay {
           position: absolute;
