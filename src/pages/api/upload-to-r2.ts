@@ -45,7 +45,21 @@ export const POST: APIRoute = async ({ request }) => {
     const buffer = Buffer.from(arrayBuffer);
 
     // Subir a Cloudflare R2
-    const imageUrl = await uploadToR2(uniqueFileName, buffer, file.type);
+    const imageUrl = await uploadToR2(uniqueFileName, buffer, file.type);    // Normalizar el username para consistencia
+    let normalizedUserName = userName;
+    if (!normalizedUserName || normalizedUserName.trim() === '') {
+      normalizedUserName = `user-${userId.slice(-8)}`;
+    } else {
+      // Si es un email, extraer la parte antes del @
+      if (normalizedUserName.includes('@')) {
+        normalizedUserName = normalizedUserName.split('@')[0];
+      }
+      // Si empieza con "user_" (formato de Clerk), convertir a nuestro formato
+      if (normalizedUserName.startsWith('user_')) {
+        const userIdPart = normalizedUserName.substring(5);
+        normalizedUserName = `user-${userIdPart.slice(-8)}`;
+      }
+    }
 
     // También guardar referencia en Supabase para mantener compatibilidad durante migración
     const { data, error } = await supabase
@@ -55,7 +69,7 @@ export const POST: APIRoute = async ({ request }) => {
           title,
           image_data: imageUrl, // Almacenar URL de R2 en image_data
           image_name: file.name,
-          uploaded_by: userName || `user-${userId.slice(-8)}`, // Usar exactamente el userName recibido
+          uploaded_by: normalizedUserName,
           user_id: userId,
           uploaded_at: new Date().toISOString()
         }

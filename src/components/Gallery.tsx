@@ -19,9 +19,26 @@ function toProxyUrl(url: string): string {
 function formatUploadedBy(uploadedBy: string): string {
   if (!uploadedBy) return 'Usuario desconocido';
   
-  // Si empieza con "user-", mostrar solo lo que viene después
+  // Si empieza con "user_" (formato de Clerk), extraer la parte útil
+  if (uploadedBy.startsWith('user_')) {
+    // Extraer el ID después de "user_" y tomar los últimos 8 caracteres
+    const userId = uploadedBy.substring(5);
+    return `user-${userId.slice(-8)}`;
+  }
+  
+  // Si empieza con "user-", ya está en el formato correcto
   if (uploadedBy.startsWith('user-')) {
-    return uploadedBy.substring(5); // Remover "user-"
+    return uploadedBy;
+  }
+  
+  // Si es un username normal (sin prefijos), devolverlo tal como está
+  if (uploadedBy.length > 0 && !uploadedBy.includes('@')) {
+    return uploadedBy;
+  }
+  
+  // Si es un email, extraer la parte antes del @
+  if (uploadedBy.includes('@')) {
+    return uploadedBy.split('@')[0];
   }
   
   return uploadedBy;

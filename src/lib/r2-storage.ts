@@ -35,9 +35,23 @@ export async function uploadPhoto(
       const errorData = await response.json();
       console.error('Error en la subida:', errorData);
       return null;
+    }    const result = await response.json();
+    
+    // Normalizar el username para consistencia
+    let normalizedUserName = userName;
+    if (!normalizedUserName || normalizedUserName.trim() === '') {
+      normalizedUserName = `user-${userId.slice(-8)}`;
+    } else {
+      // Si es un email, extraer la parte antes del @
+      if (normalizedUserName.includes('@')) {
+        normalizedUserName = normalizedUserName.split('@')[0];
+      }
+      // Si empieza con "user_" (formato de Clerk), convertir a nuestro formato
+      if (normalizedUserName.startsWith('user_')) {
+        const userIdPart = normalizedUserName.substring(5);
+        normalizedUserName = `user-${userIdPart.slice(-8)}`;
+      }
     }
-
-    const result = await response.json();
     
     // Crear el objeto Photo compatible
     const newPhoto: Photo = {
@@ -45,7 +59,7 @@ export async function uploadPhoto(
       title,
       image_data: result.imageUrl,
       image_name: file.name,
-      uploaded_by: userName || `user-${userId.slice(-8)}`, // Usar exactamente el userName recibido
+      uploaded_by: normalizedUserName,
       uploaded_at: new Date().toISOString(),
       user_id: userId
     };
