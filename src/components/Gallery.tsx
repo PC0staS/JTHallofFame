@@ -60,6 +60,7 @@ export default function Gallery({ photos: initialPhotos, currentUserId, currentU
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [showComments, setShowComments] = useState<string | null>(null);
   const [commentCounts, setCommentCounts] = useState<Record<string, number>>({});
+  const [loadingCommentCounts, setLoadingCommentCounts] = useState(false);
   
   // Filtrar fotos basado en el término de búsqueda
   const filteredPhotos = photos.filter(photo => {
@@ -83,10 +84,16 @@ export default function Gallery({ photos: initialPhotos, currentUserId, currentU
         image_data: toProxyUrl(photo.image_data)
       }));
       setPhotos(photosWithProxy);
-      // Cargar conteos de comentarios para las fotos iniciales
-      loadCommentCounts(photosWithProxy);
     }
   }, [initialPhotos]);
+
+  // Cargar conteos cuando las fotos están listas
+  useEffect(() => {
+    if (photos.length > 0 && isClient) {
+      console.log('Photos loaded, loading comment counts for', photos.length, 'photos');
+      loadCommentCounts(photos);
+    }
+  }, [photos, isClient]);
 
   // Listener para el evento de refresh desde el navbar
   useEffect(() => {
@@ -119,10 +126,6 @@ export default function Gallery({ photos: initialPhotos, currentUserId, currentU
       image_data: toProxyUrl(photo.image_data)
     }));
     setPhotos(photosWithProxy);
-    
-    // Cargar conteos de comentarios
-    await loadCommentCounts(photosWithProxy);
-    
     setLoading(false);
   };
 
@@ -178,35 +181,35 @@ export default function Gallery({ photos: initialPhotos, currentUserId, currentU
     }));
   };
 
-  // Función para cargar conteos de comentarios
+  // Función para cargar conteos de comentarios (optimizada: batch API)
   const loadCommentCounts = async (photoList: Photo[]) => {
-    const counts: Record<string, number> = {};
-    
-    // Cargar conteos en paralelo
-    await Promise.all(
-      photoList.map(async (photo) => {
-        try {
-          const response = await fetch(`/api/comments?photoId=${photo.id}`);
-          if (response.ok) {
-            const data = await response.json();
-            counts[photo.id] = data.comments?.length || 0;
-          }
-        } catch (error) {
-          console.error(`Error loading comment count for photo ${photo.id}:`, error);
-          counts[photo.id] = 0;
-        }
-      })
-    );
-    
-    setCommentCounts(counts);
-  };
-
-  // Cargar conteos de comentarios al cargar las fotos
-  useEffect(() => {
-    if (photos.length > 0) {
-      loadCommentCounts(photos);
+    if (!photoList.length) {
+      setCommentCounts({});
+      return;
     }
-  }, [photos]);
+    console.log('Cargando contadores de comentarios para', photoList.length, 'fotos');
+    setLoadingCommentCounts(true);
+    try {
+      const response = await fetch('/api/comment-counts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ photoIds: photoList.map((p) => p.id) })
+      });
+      if (response.ok) {
+        const counts = await response.json();
+        console.log('Contadores recibidos:', counts);
+        setCommentCounts(counts);
+      } else {
+        console.error('Error en la respuesta del servidor:', response.status);
+        setCommentCounts({});
+      }
+    } catch (error) {
+      console.error('Error cargando contadores:', error);
+      setCommentCounts({});
+    } finally {
+      setLoadingCommentCounts(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -342,11 +345,18 @@ export default function Gallery({ photos: initialPhotos, currentUserId, currentU
                     e.stopPropagation();
                     setShowComments(photo.id);
                   }}
-                  title={`Ver comentarios${commentCounts[photo.id] ? ` (${commentCounts[photo.id]})` : ''}`}
+                  title={`Ver comentarios${commentCounts[photo.id] !== undefined ? ` (${commentCounts[photo.id]})` : ''}`}
                 >
                   <i className="bi bi-chat-dots"></i>
-                  {commentCounts[photo.id] !== undefined && commentCounts[photo.id] > 0 && (
+                  {/* Siempre mostrar contador: spinner si está cargando, número si ya se cargó */}
+                  {commentCounts[photo.id] === undefined ? (
+                    <span className="comment-count loading">
+                      <div className="spinner-border spinner-border-sm"></div>
+                    </span>
+                  ) : commentCounts[photo.id] > 0 ? (
                     <span className="comment-count">{commentCounts[photo.id]}</span>
+                  ) : (
+                    <span className="comment-count zero">0</span>
                   )}
                 </button>
               </div>
@@ -668,6 +678,25 @@ export default function Gallery({ photos: initialPhotos, currentUserId, currentU
           animation: pulse 2s infinite;
         }
         
+        .comment-count.loading {
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          box-shadow: 0 3px 8px rgba(102, 126, 234, 0.4);
+          animation: loadingPulse 1.5s ease-in-out infinite;
+        }
+        
+        .comment-count.loading .spinner-border-sm {
+          width: 12px;
+          height: 12px;
+          border-width: 1px;
+        }
+        
+        .comment-count.zero {
+          background: rgba(108, 117, 125, 0.8);
+          color: white;
+          box-shadow: 0 3px 8px rgba(108, 117, 125, 0.3);
+          animation: none;
+        }
+        
         @keyframes pulse {
           0% {
             transform: scale(1);
@@ -680,6 +709,21 @@ export default function Gallery({ photos: initialPhotos, currentUserId, currentU
           100% {
             transform: scale(1);
             box-shadow: 0 3px 8px rgba(255, 71, 87, 0.4);
+          }
+        }
+        
+        @keyframes loadingPulse {
+          0% {
+            transform: scale(1);
+            box-shadow: 0 3px 8px rgba(102, 126, 234, 0.4);
+          }
+          50% {
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.6);
+          }
+          100% {
+            transform: scale(1);
+            box-shadow: 0 3px 8px rgba(102, 126, 234, 0.4);
           }
         }
 
