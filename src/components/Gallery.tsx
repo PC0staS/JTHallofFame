@@ -173,6 +173,51 @@ export default function Gallery({ photos: initialPhotos, currentUserId, currentU
     setSelectedPhoto(null);
   };
 
+  // Funciones de navegación en el modal
+  const goToPreviousPhoto = () => {
+    if (!selectedPhoto) return;
+    const currentIndex = filteredPhotos.findIndex(photo => photo.id === selectedPhoto.id);
+    const previousIndex = currentIndex > 0 ? currentIndex - 1 : filteredPhotos.length - 1;
+    setSelectedPhoto(filteredPhotos[previousIndex]);
+  };
+
+  const goToNextPhoto = () => {
+    if (!selectedPhoto) return;
+    const currentIndex = filteredPhotos.findIndex(photo => photo.id === selectedPhoto.id);
+    const nextIndex = currentIndex < filteredPhotos.length - 1 ? currentIndex + 1 : 0;
+    setSelectedPhoto(filteredPhotos[nextIndex]);
+  };
+
+  // Manejar teclas de navegación
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (!selectedPhoto) return;
+      
+      switch (event.key) {
+        case 'ArrowLeft':
+          event.preventDefault();
+          goToPreviousPhoto();
+          break;
+        case 'ArrowRight':
+          event.preventDefault();
+          goToNextPhoto();
+          break;
+        case 'Escape':
+          event.preventDefault();
+          closeModal();
+          break;
+      }
+    };
+
+    if (selectedPhoto) {
+      window.addEventListener('keydown', handleKeyDown);
+    }
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [selectedPhoto, filteredPhotos]);
+
   // Función para actualizar el conteo de comentarios de una foto específica
   const updateCommentCount = (photoId: string, newCount: number) => {
     setCommentCounts(prev => ({
@@ -405,6 +450,7 @@ export default function Gallery({ photos: initialPhotos, currentUserId, currentU
         >
           <div className="modal-dialog modal-lg modal-dialog-centered">
             <div className="modal-content bg-transparent border-0">
+              {/* Botón cerrar */}
               <div className="modal-header border-0 position-absolute" style={{ top: 0, right: 0, zIndex: 20 }}>
                 <button 
                   type="button" 
@@ -413,6 +459,32 @@ export default function Gallery({ photos: initialPhotos, currentUserId, currentU
                   style={{ position: 'absolute', top: '10px', right: '10px' }}
                 ></button>
               </div>
+
+              {/* Botones de navegación */}
+              {filteredPhotos.length > 1 && (
+                <>
+                  <button
+                    className="modal-nav-btn prev"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      goToPreviousPhoto();
+                    }}
+                    title="Imagen anterior (←)"
+                  >
+                    <i className="bi bi-chevron-left"></i>
+                  </button>
+                  <button
+                    className="modal-nav-btn next"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      goToNextPhoto();
+                    }}
+                    title="Imagen siguiente (→)"
+                  >
+                    <i className="bi bi-chevron-right"></i>
+                  </button>
+                </>
+              )}
               
               <div className="modal-body p-0 text-center">
                 <img
@@ -431,6 +503,13 @@ export default function Gallery({ photos: initialPhotos, currentUserId, currentU
                   <p className="mb-2">
                     Subido por {formatUploadedBy(selectedPhoto.uploaded_by)} - {new Date(selectedPhoto.uploaded_at).toLocaleDateString()}
                   </p>
+                  
+                  {/* Indicador de posición */}
+                  {filteredPhotos.length > 1 && (
+                    <p className="mb-2 text-muted">
+                      {filteredPhotos.findIndex(photo => photo.id === selectedPhoto.id) + 1} de {filteredPhotos.length}
+                    </p>
+                  )}
                   
                   {/* Botón de eliminar en el modal */}
                   <button
@@ -822,6 +901,76 @@ export default function Gallery({ photos: initialPhotos, currentUserId, currentU
           .overlay-icon {
             font-size: 2rem;
           }        }
+        
+        /* Estilos para los botones de navegación del modal */
+        .modal-nav-btn {
+          position: absolute;
+          top: 50%;
+          transform: translateY(-50%);
+          background: rgba(0, 0, 0, 0.6);
+          color: white;
+          border: none;
+          border-radius: 50%;
+          width: 50px;
+          height: 50px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 20px;
+          cursor: pointer;
+          z-index: 10;
+          transition: all 0.3s ease;
+          backdrop-filter: blur(10px);
+          border: 2px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .modal-nav-btn:hover {
+          background: rgba(0, 0, 0, 0.8);
+          border-color: rgba(255, 255, 255, 0.4);
+          transform: translateY(-50%) scale(1.1);
+          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+        
+        .modal-nav-btn.prev {
+          left: 20px;
+        }
+        
+        .modal-nav-btn.next {
+          right: 20px;
+        }
+        
+        /* Responsive para botones de navegación */
+        @media (max-width: 768px) {
+          .modal-nav-btn {
+            width: 40px;
+            height: 40px;
+            font-size: 16px;
+          }
+          
+          .modal-nav-btn.prev {
+            left: 10px;
+          }
+          
+          .modal-nav-btn.next {
+            right: 10px;
+          }
+        }
+        
+        @media (max-width: 576px) {
+          .modal-nav-btn {
+            width: 35px;
+            height: 35px;
+            font-size: 14px;
+          }
+          
+          .modal-nav-btn.prev {
+            left: 5px;
+          }
+          
+          .modal-nav-btn.next {
+            right: 5px;
+          }
+        }
         
         /* Estilos mejorados para la búsqueda */
         .search-container {
