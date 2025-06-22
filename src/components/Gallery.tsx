@@ -62,6 +62,8 @@ export default function Gallery({ photos: initialPhotos, currentUserId, currentU
   const [commentCounts, setCommentCounts] = useState<Record<string, number>>({});
   const [loadingCommentCounts, setLoadingCommentCounts] = useState(false);
   
+
+  
   // Filtrar fotos basado en el término de búsqueda
   const filteredPhotos = photos.filter(photo => {
     if (!searchTerm.trim()) return true;
@@ -116,6 +118,17 @@ export default function Gallery({ photos: initialPhotos, currentUserId, currentU
       window.removeEventListener('refreshPhotos', handleRefreshPhotos);
     };
   }, [showComments]); // Añadido showComments como dependencia
+
+  // Verificar coherencia de selectedPhoto con filteredPhotos
+  useEffect(() => {
+    if (selectedPhoto && filteredPhotos.length > 0) {
+      const photoExists = filteredPhotos.some(photo => photo.id === selectedPhoto.id);
+      if (!photoExists) {
+        // Si la foto seleccionada ya no está en los filtros, cerrar modal
+        closeModal();
+      }
+    }
+  }, [filteredPhotos]);
 
   const loadPhotos = async () => {
     setLoading(true);
@@ -175,17 +188,31 @@ export default function Gallery({ photos: initialPhotos, currentUserId, currentU
 
   // Funciones de navegación en el modal
   const goToPreviousPhoto = () => {
-    if (!selectedPhoto) return;
+    if (!selectedPhoto || filteredPhotos.length === 0) return;
+    
     const currentIndex = filteredPhotos.findIndex(photo => photo.id === selectedPhoto.id);
+    if (currentIndex === -1) return;
+    
     const previousIndex = currentIndex > 0 ? currentIndex - 1 : filteredPhotos.length - 1;
-    setSelectedPhoto(filteredPhotos[previousIndex]);
+    const previousPhoto = filteredPhotos[previousIndex];
+    
+    if (previousPhoto) {
+      setSelectedPhoto(previousPhoto);
+    }
   };
 
   const goToNextPhoto = () => {
-    if (!selectedPhoto) return;
+    if (!selectedPhoto || filteredPhotos.length === 0) return;
+    
     const currentIndex = filteredPhotos.findIndex(photo => photo.id === selectedPhoto.id);
+    if (currentIndex === -1) return;
+    
     const nextIndex = currentIndex < filteredPhotos.length - 1 ? currentIndex + 1 : 0;
-    setSelectedPhoto(filteredPhotos[nextIndex]);
+    const nextPhoto = filteredPhotos[nextIndex];
+    
+    if (nextPhoto) {
+      setSelectedPhoto(nextPhoto);
+    }
   };
 
   // Manejar teclas de navegación
@@ -446,76 +473,100 @@ export default function Gallery({ photos: initialPhotos, currentUserId, currentU
       {/* Modal para mostrar foto ampliada */}
       {selectedPhoto && (
         <div 
-          className="modal fade show d-block" 
-          style={{ backgroundColor: 'rgba(0,0,0,0.8)' }}
+          className="modal-overlay" 
           onClick={closeModal}
         >
-          <div className="modal-dialog modal-lg modal-dialog-centered">
-            <div className="modal-content bg-transparent border-0">
-              {/* Botón cerrar */}
-              <div className="modal-header border-0 position-absolute" style={{ top: 0, right: 0, zIndex: 20 }}>
-                <button 
-                  type="button" 
-                  className="btn-close btn-close-white" 
-                  onClick={closeModal}
-                  style={{ position: 'absolute', top: '10px', right: '10px' }}
-                ></button>
-              </div>
+          <div className="modal-container">
+            {/* Botón cerrar mejorado */}
+            <button 
+              className="modal-close-btn"
+              onClick={closeModal}
+              title="Cerrar (Esc)"
+            >
+              <i className="bi bi-x-lg"></i>
+            </button>
 
-              {/* Botones de navegación */}
-              {filteredPhotos.length > 1 && (
-                <>
-                  <button
-                    className="modal-nav-btn prev"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      goToPreviousPhoto();
-                    }}
-                    title="Imagen anterior (←)"
-                  >
-                    <i className="bi bi-chevron-left"></i>
-                  </button>
-                  <button
-                    className="modal-nav-btn next"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      goToNextPhoto();
-                    }}
-                    title="Imagen siguiente (→)"
-                  >
-                    <i className="bi bi-chevron-right"></i>
-                  </button>
-                </>
-              )}
-              
-              <div className="modal-body p-0 text-center">
-                <img
-                  src={selectedPhoto.image_data}
-                  alt={selectedPhoto.title}
-                  className="img-fluid"
-                  style={{ 
-                    maxHeight: '90vh',
-                    maxWidth: '100%',
-                    objectFit: 'contain'
+            {/* Botones de navegación con posición fija */}
+            {filteredPhotos.length > 1 && (
+              <>
+                <button
+                  className="modal-nav-btn prev"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    goToPreviousPhoto();
                   }}
-                  onClick={(e) => e.stopPropagation()}
-                />
-                <div className="mt-3 text-white">
-                  <h5>{selectedPhoto.title}</h5>
-                  <p className="mb-2">
-                    Subido por {formatUploadedBy(selectedPhoto.uploaded_by)} - {new Date(selectedPhoto.uploaded_at).toLocaleDateString()}
-                  </p>
-                  
-                  {/* Indicador de posición */}
+                  onTouchStart={(e) => e.stopPropagation()}
+                  title="Imagen anterior (←)"
+                >
+                  <i className="bi bi-chevron-left"></i>
+                </button>
+                <button
+                  className="modal-nav-btn next"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    goToNextPhoto();
+                  }}
+                  onTouchStart={(e) => e.stopPropagation()}
+                  title="Imagen siguiente (→)"
+                >
+                  <i className="bi bi-chevron-right"></i>
+                </button>
+              </>
+            )}
+
+            {/* Contenedor de imagen mejorado */}
+            <div className="modal-image-container">
+              <img
+                src={selectedPhoto.image_data}
+                alt={selectedPhoto.title}
+                className="modal-image"
+                onClick={(e) => e.stopPropagation()}
+              />
+            </div>
+
+            {/* Panel de información mejorado */}
+            <div className="modal-info-panel">
+              <div className="modal-info-content">
+                <div className="modal-header-info">
+                  <h3 className="modal-title">{selectedPhoto.title}</h3>
                   {filteredPhotos.length > 1 && (
-                    <p className="mb-2 text-muted">
-                      {filteredPhotos.findIndex(photo => photo.id === selectedPhoto.id) + 1} de {filteredPhotos.length}
-                    </p>
+                    <span className="modal-counter">
+                      {filteredPhotos.findIndex(photo => photo.id === selectedPhoto.id) + 1} / {filteredPhotos.length}
+                    </span>
                   )}
-                  
-                  {/* Botón de eliminar en el modal */}
+                </div>
+                
+                <div className="modal-meta">
+                  <div className="modal-meta-item">
+                    <i className="bi bi-person-circle"></i>
+                    <span>Subido por {formatUploadedBy(selectedPhoto.uploaded_by)}</span>
+                  </div>
+                  <div className="modal-meta-item">
+                    <i className="bi bi-calendar3"></i>
+                    <span>{new Date(selectedPhoto.uploaded_at).toLocaleDateString()}</span>
+                  </div>
+                </div>
+                
+                {/* Botones de acción mejorados */}
+                <div className="modal-actions">
                   <button
-                    className="btn btn-danger btn-sm me-2"
+                    className="modal-action-btn primary"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowComments(selectedPhoto.id);
+                    }}
+                  >
+                    <i className="bi bi-chat-dots"></i>
+                    <span>Comentarios</span>
+                    {commentCounts[selectedPhoto.id] > 0 && (
+                      <span className="action-badge">{commentCounts[selectedPhoto.id]}</span>
+                    )}
+                  </button>
+                  
+                  <button
+                    className="modal-action-btn danger"
                     onClick={(e) => {
                       e.stopPropagation();
                       deletePhoto(selectedPhoto.id);
@@ -524,27 +575,15 @@ export default function Gallery({ photos: initialPhotos, currentUserId, currentU
                   >
                     {deletingPhotoId === selectedPhoto.id ? (
                       <>
-                        <span className="spinner-border spinner-border-sm me-2" style={{ width: '12px', height: '12px' }}></span>
-                        Eliminando...
+                        <div className="spinner-small"></div>
+                        <span>Eliminando...</span>
                       </>
                     ) : (
                       <>
-                        <i className="bi bi-trash me-2"></i>
-                        Eliminar imagen
+                        <i className="bi bi-trash"></i>
+                        <span>Eliminar</span>
                       </>
                     )}
-                  </button>
-
-                  {/* Botón de comentarios en el modal */}
-                  <button
-                    className="btn btn-primary btn-sm"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setShowComments(selectedPhoto.id);
-                    }}
-                  >
-                    <i className="bi bi-chat-dots me-2"></i>
-                    Comentarios
                   </button>
                 </div>
               </div>
@@ -945,49 +984,341 @@ export default function Gallery({ photos: initialPhotos, currentUserId, currentU
             font-size: 2rem;
           }        }
         
-        /* Estilos para los botones de navegación del modal */
-        .modal-nav-btn {
-          position: absolute;
-          top: 50%;
-          transform: translateY(-50%);
-          background: rgba(0, 0, 0, 0.6);
-          color: white;
-          border: none;
-          border-radius: 50%;
-          width: 50px;
-          height: 50px;
+        /* Estilos para el modal mejorado */
+        .modal-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(0, 0, 0, 0.9);
           display: flex;
           align-items: center;
           justify-content: center;
-          font-size: 20px;
+          z-index: 1040;
+          animation: modalFadeIn 0.2s ease-out;
+          will-change: opacity;
+          touch-action: none;
+          -webkit-overflow-scrolling: touch;
+        }
+        
+        .modal-container {
+          position: relative;
+          width: 95vw;
+          height: 95vh;
+          max-width: 1200px;
+          display: flex;
+          flex-direction: column;
+          background: rgba(255, 255, 255, 0.05);
+          border-radius: 24px;
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          backdrop-filter: blur(15px);
+          box-shadow: 
+            0 25px 50px rgba(0, 0, 0, 0.3),
+            inset 0 1px 0 rgba(255, 255, 255, 0.1);
+          overflow: hidden;
+          will-change: transform, opacity;
+          animation: modalSlideIn 0.2s ease-out;
+        }
+        
+        .modal-close-btn {
+          position: absolute;
+          top: 20px;
+          right: 20px;
+          width: 44px;
+          height: 44px;
+          background: rgba(0, 0, 0, 0.6);
+          border: 1px solid rgba(255, 255, 255, 0.2);
+          border-radius: 50%;
+          color: white;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 18px;
           cursor: pointer;
           z-index: 10;
           transition: all 0.3s ease;
           backdrop-filter: blur(10px);
-          border: 2px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .modal-close-btn:hover {
+          background: rgba(220, 53, 69, 0.8);
+          border-color: rgba(220, 53, 69, 0.6);
+          transform: scale(1.1);
+        }
+        
+        .modal-image-container {
+          flex: 1;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 20px;
+          min-height: 0;
+        }
+        
+        .modal-image {
+          max-width: 100%;
+          max-height: 100%;
+          object-fit: contain;
+          border-radius: 16px;
+          box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+          transition: transform 0.2s ease;
+          will-change: transform;
+          image-rendering: -webkit-optimize-contrast;
+        }
+        
+        .modal-image:hover {
+          transform: scale(1.01);
+        }
+        
+        .modal-info-panel {
+          background: linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.04) 100%);
+          border-top: 1px solid rgba(255, 255, 255, 0.1);
+          padding: 24px;
+          backdrop-filter: blur(10px);
+          will-change: transform;
+        }
+        
+        .modal-info-content {
+          max-width: 800px;
+          margin: 0 auto;
+        }
+        
+        .modal-header-info {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 16px;
+        }
+        
+        .modal-title {
+          color: white;
+          font-size: 1.5rem;
+          font-weight: 600;
+          margin: 0;
+          text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+        }
+        
+        .modal-counter {
+          background: rgba(102, 126, 234, 0.2);
+          border: 1px solid rgba(102, 126, 234, 0.3);
+          color: #a3bffa;
+          padding: 6px 12px;
+          border-radius: 20px;
+          font-size: 0.9rem;
+          font-weight: 500;
+          backdrop-filter: blur(10px);
+        }
+        
+        .modal-meta {
+          display: flex;
+          gap: 24px;
+          margin-bottom: 20px;
+        }
+        
+        .modal-meta-item {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          color: rgba(255, 255, 255, 0.8);
+          font-size: 0.95rem;
+        }
+        
+        .modal-meta-item i {
+          color: rgba(255, 255, 255, 0.6);
+          font-size: 1.1rem;
+        }
+        
+        .modal-actions {
+          display: flex;
+          gap: 12px;
+          flex-wrap: wrap;
+        }
+        
+        .modal-action-btn {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 12px 20px;
+          border-radius: 12px;
+          border: none;
+          font-weight: 500;
+          cursor: pointer;
+          transition: transform 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
+          backdrop-filter: blur(10px);
+          position: relative;
+          will-change: transform;
+        }
+        
+        .modal-action-btn.primary {
+          background: rgba(102, 126, 234, 0.2);
+          border: 1px solid rgba(102, 126, 234, 0.3);
+          color: #a3bffa;
+        }
+        
+        .modal-action-btn.primary:hover {
+          background: rgba(102, 126, 234, 0.3);
+          border-color: rgba(102, 126, 234, 0.5);
+          color: white;
+          transform: translateY(-2px) translateZ(0);
+        }
+        
+        .modal-action-btn.danger {
+          background: rgba(220, 53, 69, 0.2);
+          border: 1px solid rgba(220, 53, 69, 0.3);
+          color: #f87171;
+        }
+        
+        .modal-action-btn.danger:hover {
+          background: rgba(220, 53, 69, 0.3);
+          border-color: rgba(220, 53, 69, 0.5);
+          color: white;
+          transform: translateY(-2px) translateZ(0);
+        }
+        
+        .modal-action-btn:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+          transform: none !important;
+        }
+        
+        .action-badge {
+          background: linear-gradient(135deg, #ff4757 0%, #ff3742 100%);
+          color: white;
+          padding: 2px 8px;
+          border-radius: 12px;
+          font-size: 0.8rem;
+          font-weight: 600;
+          min-width: 20px;
+          text-align: center;
+        }
+        
+        .spinner-small {
+          width: 16px;
+          height: 16px;
+          border: 2px solid rgba(255, 255, 255, 0.3);
+          border-top: 2px solid white;
+          border-radius: 50%;
+          animation: spin 1s linear infinite;
+        }
+        .modal-nav-btn {
+          position: fixed;
+          top: 50%;
+          transform: translateY(-50%) translateZ(0);
+          width: 56px;
+          height: 56px;
+          background: rgba(0, 0, 0, 0.6);
+          border: 1px solid rgba(255, 255, 255, 0.2);
+          border-radius: 50%;
+          color: white;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 24px;
+          cursor: pointer;
+          z-index: 15;
+          transition: transform 0.2s ease, background-color 0.2s ease;
+          backdrop-filter: blur(10px);
+          box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+          will-change: transform;
         }
         
         .modal-nav-btn:hover {
-          background: rgba(0, 0, 0, 0.8);
+          background: rgba(255, 255, 255, 0.1);
           border-color: rgba(255, 255, 255, 0.4);
-          transform: translateY(-50%) scale(1.1);
-          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+          transform: translateY(-50%) scale(1.1) translateZ(0);
+        }
+        
+        .modal-nav-btn:active {
+          transform: translateY(-50%) scale(1.05) translateZ(0);
         }
         
         .modal-nav-btn.prev {
-          left: 20px;
+          left: 30px;
         }
         
         .modal-nav-btn.next {
-          right: 20px;
+          right: 30px;
         }
         
-        /* Responsive para botones de navegación */
+        /* Animaciones optimizadas del modal */
+        @keyframes modalFadeIn {
+          from {
+            opacity: 0;
+          }
+          to {
+            opacity: 1;
+          }
+        }
+        
+        @keyframes modalSlideIn {
+          from {
+            opacity: 0;
+            transform: scale(0.95) translateY(20px);
+          }
+          to {
+            opacity: 1;
+            transform: scale(1) translateY(0);
+          }
+        }
+        
         @media (max-width: 768px) {
-          .modal-nav-btn {
+          .modal-container {
+            width: 100vw;
+            height: 100vh;
+            border-radius: 0;
+          }
+          
+          .modal-close-btn {
+            top: 15px;
+            right: 15px;
             width: 40px;
             height: 40px;
             font-size: 16px;
+          }
+          
+          .modal-nav-btn {
+            width: 48px;
+            height: 48px;
+            font-size: 20px;
+          }
+          
+          .modal-nav-btn.prev {
+            left: 15px;
+          }
+          
+          .modal-nav-btn.next {
+            right: 15px;
+          }
+          
+          .modal-info-panel {
+            padding: 20px 16px;
+          }
+          
+          .modal-title {
+            font-size: 1.3rem;
+          }
+          
+          .modal-meta {
+            flex-direction: column;
+            gap: 12px;
+          }
+          
+          .modal-actions {
+            flex-direction: column;
+          }
+          
+          .modal-action-btn {
+            width: 100%;
+            justify-content: center;
+          }
+        }
+        
+        @media (max-width: 576px) {
+          .modal-nav-btn {
+            width: 44px;
+            height: 44px;
+            font-size: 18px;
           }
           
           .modal-nav-btn.prev {
@@ -997,21 +1328,9 @@ export default function Gallery({ photos: initialPhotos, currentUserId, currentU
           .modal-nav-btn.next {
             right: 10px;
           }
-        }
-        
-        @media (max-width: 576px) {
-          .modal-nav-btn {
-            width: 35px;
-            height: 35px;
-            font-size: 14px;
-          }
           
-          .modal-nav-btn.prev {
-            left: 5px;
-          }
-          
-          .modal-nav-btn.next {
-            right: 5px;
+          .modal-image-container {
+            padding: 15px;
           }
         }
         

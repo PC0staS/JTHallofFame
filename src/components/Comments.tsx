@@ -360,7 +360,7 @@ export default function Comments({ photoId, currentUserId, currentUserName, curr
             display: flex;
             align-items: center;
             justify-content: center;
-            z-index: 1000;
+            z-index: 1060;
             padding: 20px;
           }
 
