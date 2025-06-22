@@ -30,6 +30,14 @@ export const r2Client = new S3Client({
 // Upload file to R2
 export async function uploadToR2(filePath: string, fileBuffer: Buffer, contentType: string) {
   try {
+    console.log('Uploading to R2:', {
+      filePath,
+      contentType,
+      bufferSize: fileBuffer.length,
+      bucketName,
+      publicUrl
+    });
+
     await r2Client.send(new PutObjectCommand({
       Bucket: bucketName,
       Key: filePath,
@@ -37,12 +45,19 @@ export async function uploadToR2(filePath: string, fileBuffer: Buffer, contentTy
       ContentType: contentType,
       // R2 doesn't support ACLs like S3, remove this line
       // ACL: 'public-read',
-    }));
-
-    // Return the public URL of the uploaded file
+    }));    // Return the public URL of the uploaded file
     // Asegurar que se use HTTPS para el dominio personalizado
     const baseUrl = publicUrl?.startsWith('http') ? publicUrl : `https://${publicUrl}`;
-    return `${baseUrl}/${filePath}`;
+    
+    // Normalizar la URL para evitar dobles barras
+    const normalizedBaseUrl = baseUrl?.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
+    const normalizedFilePath = filePath.startsWith('/') ? filePath.slice(1) : filePath;
+    
+    const finalUrl = `${normalizedBaseUrl}/${normalizedFilePath}`;
+    
+    console.log('Upload successful, final URL:', finalUrl);
+    
+    return finalUrl;
   } catch (error) {
     console.error('Error uploading to R2:', error);
     throw error;

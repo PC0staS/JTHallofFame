@@ -2,17 +2,46 @@ import { useState, useEffect } from 'react';
 import { getPhotos as getPhotosFromSupabase, type Photo } from '../lib/supabase';
 import Comments from './Comments.tsx';
 
+// Utilidad para normalizar URLs y eliminar dobles barras
+function normalizeUrl(url: string): string {
+  if (!url) return '';
+  
+  // Reemplazar múltiples barras consecutivas con una sola (excepto después de http:// o https://)
+  return url.replace(/([^:]\/)\/+/g, '$1');
+}
+
 // Utilidad para forzar el uso del proxy para las URLs de R2
 function toProxyUrl(url: string): string {
   if (!url) return '';
+  
+  // Primero normalizar la URL para eliminar dobles barras
+  const normalizedUrl = normalizeUrl(url);
+  
+  console.log('Original URL:', url);
+  console.log('Normalized URL:', normalizedUrl);
+  
+  // En desarrollo, permitir acceso directo para debugging
+  if (import.meta.env.DEV) {
+    console.log('Development mode - using direct URL:', normalizedUrl);
+    return normalizedUrl;
+  }
+  
   // Solo forzar el proxy en producción
   if (import.meta.env.PROD) {
     // Detecta si es una URL de R2 (development, dominio personalizado anterior o nuevo)
-    if (url.includes('.r2.dev/') || url.includes('memes.jonastown.es/') || url.includes('img.jonastown.es/')) {
-      return `/r2-proxy?url=${encodeURIComponent(url)}`;
+    if (normalizedUrl.includes('.r2.dev/') || 
+        normalizedUrl.includes('memes.jonastown.es/') || 
+        normalizedUrl.includes('img.jonastown.es/') ||
+        normalizedUrl.includes('pub-') || // Para detectar URLs de R2 genéricas
+        normalizedUrl.includes('r2.cloudflarestorage.com')) {
+      const proxyUrl = `/r2-proxy?url=${encodeURIComponent(normalizedUrl)}`;
+      console.log('Using proxy URL:', proxyUrl);
+      return proxyUrl;
     }
   }
-  return url;
+  
+  console.log('Using direct URL:', normalizedUrl);
+  return normalizedUrl;
 }
 
 // Utilidad para formatear el nombre del usuario
@@ -62,8 +91,63 @@ export default function Gallery({ photos: initialPhotos, currentUserId, currentU
   const [commentCounts, setCommentCounts] = useState<Record<string, number>>({});
   const [loadingCommentCounts, setLoadingCommentCounts] = useState(false);
   
+  // Estado y funciones de zoom para el modal
+  const [modalZoom, setModalZoom] = useState(1);
+  const ZOOM_MIN = 1;
+  const ZOOM_MAX = 4;
+  const ZOOM_STEP = 0.2;
 
-  
+  // Estado y lógica para drag de la imagen ampliada
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const [dragStart, setDragStart] = useState<{ x: number; y: number } | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  // Resetear zoom y drag al abrir/cerrar modal o cambiar imagen
+  useEffect(() => {
+    setModalZoom(1);
+    setDragOffset({ x: 0, y: 0 });
+    setIsDragging(false);
+    setDragStart(null);
+  }, [selectedPhoto]);
+  const handleZoomIn = (e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setModalZoom(z => Math.min(ZOOM_MAX, +(z + ZOOM_STEP).toFixed(2)));
+  };  const handleZoomOut = (e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    const newZoom = Math.max(ZOOM_MIN, +(modalZoom - ZOOM_STEP).toFixed(2));
+    setModalZoom(newZoom);
+    // Si volvemos a zoom 1, resetear el drag inmediatamente
+    if (newZoom === 1) {
+      setDragOffset({ x: 0, y: 0 });
+      setIsDragging(false);
+      setDragStart(null);
+    }
+  };
+
+  const handleResetPhoto = (e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setModalZoom(1);
+    setDragOffset({ x: 0, y: 0 });
+    setIsDragging(false);
+    setDragStart(null);
+  };const handleWheelZoom = (e: React.WheelEvent<HTMLImageElement>) => {
+    if (e.ctrlKey || Math.abs(e.deltaY) < 2) return; // ignorar gestos de pinch
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (e.deltaY < 0) {
+      setModalZoom(z => Math.min(ZOOM_MAX, +(z + ZOOM_STEP).toFixed(2)));
+    } else if (e.deltaY > 0) {
+      const newZoom = Math.max(ZOOM_MIN, +(modalZoom - ZOOM_STEP).toFixed(2));
+      setModalZoom(newZoom);
+      // Si volvemos a zoom 1, resetear el drag inmediatamente
+      if (newZoom === 1) {
+        setDragOffset({ x: 0, y: 0 });
+        setIsDragging(false);
+        setDragStart(null);
+      }
+    }
+  };
+
   // Filtrar fotos basado en el término de búsqueda
   const filteredPhotos = photos.filter(photo => {
     if (!searchTerm.trim()) return true;
@@ -74,17 +158,21 @@ export default function Gallery({ photos: initialPhotos, currentUserId, currentU
     
     return titleMatch || userMatch;
   });
-
   useEffect(() => {
     setIsClient(true);
     if (!initialPhotos) {
       loadPhotos();
     } else {
+      console.log('Initial photos received:', initialPhotos.map(p => ({ id: p.id, title: p.title, image_data: p.image_data })));
+      
       // Aplicar proxy a las URLs de las fotos
       const photosWithProxy = initialPhotos.map((photo: Photo) => ({
         ...photo,
         image_data: toProxyUrl(photo.image_data)
       }));
+      
+      console.log('Initial photos with proxy:', photosWithProxy.map(p => ({ id: p.id, title: p.title, image_data: p.image_data })));
+      
       setPhotos(photosWithProxy);
     }
   }, [initialPhotos]);
@@ -129,15 +217,20 @@ export default function Gallery({ photos: initialPhotos, currentUserId, currentU
       }
     }
   }, [filteredPhotos]);
-
   const loadPhotos = async () => {
     setLoading(true);
     const fetchedPhotos = await getPhotosFromSupabase();
+    
+    console.log('Raw photos from database:', fetchedPhotos.map(p => ({ id: p.id, title: p.title, image_data: p.image_data })));
+    
     // Aplicar proxy a las URLs
     const photosWithProxy = fetchedPhotos.map((photo: Photo) => ({
       ...photo,
       image_data: toProxyUrl(photo.image_data)
     }));
+    
+    console.log('Photos with proxy URLs:', photosWithProxy.map(p => ({ id: p.id, title: p.title, image_data: p.image_data })));
+    
     setPhotos(photosWithProxy);
     setLoading(false);
   };
@@ -281,7 +374,98 @@ export default function Gallery({ photos: initialPhotos, currentUserId, currentU
     } finally {
       setLoadingCommentCounts(false);
     }
-  };
+  };  // --- DRAG HELPERS PARA EL MODAL ---
+  function getLimitedOffset() {
+    // Forzar centrado cuando zoom es exactamente 1
+    if (modalZoom === 1) {
+      return { x: 0, y: 0 };
+    }
+    if (!selectedPhoto) return { x: 0, y: 0 };
+    
+    const maxOffset = 200 * (modalZoom - 1);
+    return {
+      x: Math.max(Math.min(dragOffset.x, maxOffset), -maxOffset),
+      y: Math.max(Math.min(dragOffset.y, maxOffset), -maxOffset),
+    };
+  }  function handleMouseDown(e: React.MouseEvent<HTMLImageElement>) {
+    if (modalZoom <= 1) return;
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+    setDragStart({ x: e.clientX, y: e.clientY });
+  }function handleMouseMove(e: React.MouseEvent<HTMLDivElement>) {
+    if (!isDragging || !dragStart) return;
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // Ajustar sensibilidad basada en el zoom - menos sensible a mayor zoom
+    const sensitivity = Math.max(0.3, 1 / modalZoom);
+    const deltaX = (e.clientX - dragStart.x) * sensitivity;
+    const deltaY = (e.clientY - dragStart.y) * sensitivity;
+    
+    const newOffset = {
+      x: dragOffset.x + deltaX,
+      y: dragOffset.y + deltaY,
+    };
+    setDragOffset(newOffset);
+    
+    // Actualizar dragStart para el próximo movimiento
+    setDragStart({ x: e.clientX, y: e.clientY });
+  }  function handleMouseUp(e?: React.MouseEvent<HTMLDivElement>) {
+    if (!isDragging) return;
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    setIsDragging(false);
+    setDragStart(null);
+  }
+  function handleTouchStart(e: React.TouchEvent<HTMLImageElement>) {
+    if (modalZoom <= 1) return;
+    if (e.touches.length !== 1) return;
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+    setDragStart({
+      x: e.touches[0].clientX,
+      y: e.touches[0].clientY,
+    });
+  }function handleTouchMove(e: React.TouchEvent<HTMLDivElement>) {
+    if (!isDragging || !dragStart || e.touches.length !== 1) return;
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // Ajustar sensibilidad basada en el zoom - menos sensible a mayor zoom
+    const sensitivity = Math.max(0.3, 1 / modalZoom);
+    const deltaX = (e.touches[0].clientX - dragStart.x) * sensitivity;
+    const deltaY = (e.touches[0].clientY - dragStart.y) * sensitivity;
+    
+    const newOffset = {
+      x: dragOffset.x + deltaX,
+      y: dragOffset.y + deltaY,
+    };
+    setDragOffset(newOffset);
+    
+    // Actualizar dragStart para el próximo movimiento
+    setDragStart({ x: e.touches[0].clientX, y: e.touches[0].clientY });
+  }
+
+  function handleTouchEnd(e?: React.TouchEvent<HTMLDivElement>) {
+    if (!isDragging) return;
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    setIsDragging(false);
+    setDragStart(null);
+  }
+
+  // Efecto para asegurar centrado cuando zoom vuelve a 1
+  useEffect(() => {
+    if (modalZoom === 1) {
+      setDragOffset({ x: 0, y: 0 });
+    }
+  }, [modalZoom]);
 
   if (loading) {
     return (
@@ -392,6 +576,20 @@ export default function Gallery({ photos: initialPhotos, currentUserId, currentU
                 className="card-background-image"
                 alt={photo.title}
                 loading="lazy"
+                onError={(e) => {
+                  console.error('Failed to load image:', photo.image_data, 'for photo:', photo.title);
+                  // Intentar cargar la URL original si el proxy falla
+                  const originalUrl = photo.image_data.includes('/r2-proxy?url=') 
+                    ? decodeURIComponent(photo.image_data.split('/r2-proxy?url=')[1])
+                    : photo.image_data;
+                  if (e.currentTarget.src !== originalUrl) {
+                    console.log('Trying original URL:', originalUrl);
+                    e.currentTarget.src = originalUrl;
+                  }
+                }}
+                onLoad={() => {
+                  console.log('Successfully loaded image:', photo.image_data, 'for photo:', photo.title);
+                }}
               />
               
               {/* Glass effect overlay */}
@@ -471,60 +669,86 @@ export default function Gallery({ photos: initialPhotos, currentUserId, currentU
       )}
 
       {/* Modal para mostrar foto ampliada */}
-      {selectedPhoto && (
-        <div 
+      {selectedPhoto && (        <div 
           className="modal-overlay" 
-          onClick={closeModal}
-        >
-          <div className="modal-container">
-            {/* Botón cerrar mejorado */}
+          onClick={isDragging ? undefined : closeModal}
+          onMouseMove={isDragging ? handleMouseMove : undefined}
+          onMouseUp={isDragging ? handleMouseUp : undefined}
+          onMouseLeave={isDragging ? handleMouseUp : undefined}
+          onTouchMove={isDragging ? handleTouchMove : undefined}
+          onTouchEnd={isDragging ? handleTouchEnd : undefined}
+        >          <div 
+            className="modal-container"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Controles de zoom */}
+            <div className="modal-zoom-controls mt-4">
+              <button
+                className="modal-zoom-btn"
+                onClick={handleZoomOut}
+                disabled={modalZoom <= ZOOM_MIN}
+                title="Alejar (-)"
+              >
+                <i className="bi bi-zoom-out"></i>
+              </button>
+              <span className="modal-zoom-label">{(modalZoom * 100).toFixed(0)}%</span>
+              <button
+                className="modal-zoom-btn"
+                onClick={handleZoomIn}
+                disabled={modalZoom >= ZOOM_MAX}
+                title="Acercar (+)"
+              >
+                <i className="bi bi-zoom-in"></i>
+              </button>
+              <button
+                className="modal-zoom-btn reset-btn"
+                onClick={handleResetPhoto}
+                disabled={modalZoom === 1 && dragOffset.x === 0 && dragOffset.y === 0}
+                title="Resetear vista (1:1)"
+              >
+                <i className="bi bi-arrow-counterclockwise"></i>
+              </button>
+            </div>
+
+            {/* Botón cerrar mejorado - ahora por encima de los controles */}
             <button 
               className="modal-close-btn"
               onClick={closeModal}
               title="Cerrar (Esc)"
             >
               <i className="bi bi-x-lg"></i>
-            </button>
-
-            {/* Botones de navegación con posición fija */}
-            {filteredPhotos.length > 1 && (
-              <>
-                <button
-                  className="modal-nav-btn prev"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    e.preventDefault();
-                    goToPreviousPhoto();
-                  }}
-                  onTouchStart={(e) => e.stopPropagation()}
-                  title="Imagen anterior (←)"
-                >
-                  <i className="bi bi-chevron-left"></i>
-                </button>
-                <button
-                  className="modal-nav-btn next"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    e.preventDefault();
-                    goToNextPhoto();
-                  }}
-                  onTouchStart={(e) => e.stopPropagation()}
-                  title="Imagen siguiente (→)"
-                >
-                  <i className="bi bi-chevron-right"></i>
-                </button>
-              </>
-            )}
-
-            {/* Contenedor de imagen mejorado */}
-            <div className="modal-image-container">
-              <img
+            </button>{/* Contenedor de imagen mejorado */}
+            <div className="modal-image-container">              <img
                 src={selectedPhoto.image_data}
                 alt={selectedPhoto.title}
                 className="modal-image"
+                style={{ 
+                  transform: `scale(${modalZoom}) translate(${getLimitedOffset().x}px, ${getLimitedOffset().y}px)`,
+                  cursor: modalZoom > 1 ? (isDragging ? 'grabbing' : 'grab') : 'zoom-in',
+                  transition: isDragging ? 'none' : 'transform 0.2s cubic-bezier(.4,1.6,.6,1)',
+                  userSelect: 'none',
+                  transformOrigin: 'center center',
+                }}
                 onClick={(e) => e.stopPropagation()}
-              />
-            </div>
+                onWheel={handleWheelZoom}
+                draggable={false}
+                onMouseDown={handleMouseDown}
+                onTouchStart={handleTouchStart}
+                onError={(e) => {
+                  console.error('Failed to load modal image:', selectedPhoto.image_data);
+                  // Intentar cargar la URL original si el proxy falla
+                  const originalUrl = selectedPhoto.image_data.includes('/r2-proxy?url=') 
+                    ? decodeURIComponent(selectedPhoto.image_data.split('/r2-proxy?url=')[1])
+                    : selectedPhoto.image_data;
+                  if (e.currentTarget.src !== originalUrl) {
+                    console.log('Trying original URL for modal:', originalUrl);
+                    e.currentTarget.src = originalUrl;
+                  }
+                }}
+                onLoad={() => {
+                  console.log('Successfully loaded modal image:', selectedPhoto.image_data);
+                }}
+              /></div>
 
             {/* Panel de información mejorado */}
             <div className="modal-info-panel">
@@ -983,8 +1207,7 @@ export default function Gallery({ photos: initialPhotos, currentUserId, currentU
           .overlay-icon {
             font-size: 2rem;
           }        }
-        
-        /* Estilos para el modal mejorado */
+          /* Estilos para el modal mejorado */
         .modal-overlay {
           position: fixed;
           top: 0;
@@ -1000,6 +1223,7 @@ export default function Gallery({ photos: initialPhotos, currentUserId, currentU
           will-change: opacity;
           touch-action: none;
           -webkit-overflow-scrolling: touch;
+          user-select: none;
         }
         
         .modal-container {
@@ -1020,8 +1244,7 @@ export default function Gallery({ photos: initialPhotos, currentUserId, currentU
           will-change: transform, opacity;
           animation: modalSlideIn 0.2s ease-out;
         }
-        
-        .modal-close-btn {
+          .modal-close-btn {
           position: absolute;
           top: 20px;
           right: 20px;
@@ -1036,7 +1259,7 @@ export default function Gallery({ photos: initialPhotos, currentUserId, currentU
           justify-content: center;
           font-size: 18px;
           cursor: pointer;
-          z-index: 10;
+          z-index: 20;
           transition: all 0.3s ease;
           backdrop-filter: blur(10px);
         }
@@ -1055,8 +1278,7 @@ export default function Gallery({ photos: initialPhotos, currentUserId, currentU
           padding: 20px;
           min-height: 0;
         }
-        
-        .modal-image {
+          .modal-image {
           max-width: 100%;
           max-height: 100%;
           object-fit: contain;
@@ -1065,6 +1287,8 @@ export default function Gallery({ photos: initialPhotos, currentUserId, currentU
           transition: transform 0.2s ease;
           will-change: transform;
           image-rendering: -webkit-optimize-contrast;
+          transform-origin: center center;
+          display: block;
         }
         
         .modal-image:hover {
@@ -1268,13 +1492,13 @@ export default function Gallery({ photos: initialPhotos, currentUserId, currentU
             height: 100vh;
             border-radius: 0;
           }
-          
-          .modal-close-btn {
+            .modal-close-btn {
             top: 15px;
             right: 15px;
             width: 40px;
             height: 40px;
             font-size: 16px;
+            z-index: 20;
           }
           
           .modal-nav-btn {
@@ -1461,6 +1685,62 @@ export default function Gallery({ photos: initialPhotos, currentUserId, currentU
             right: 12px;
             font-size: 16px;
           }
+        }
+
+        /* Controles de zoom en el modal */
+        .modal-zoom-controls {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 1rem;
+          margin-bottom: 1rem;
+          z-index: 10;
+        }        .modal-zoom-btn {
+          background: #fff;
+          border: 1.5px solid #a3bffa;
+          color: #667eea;
+          border-radius: 50%;
+          width: 38px;
+          height: 38px;
+          font-size: 1.3rem;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          box-shadow: 0 2px 8px rgba(102,126,234,0.08);
+          transition: all 0.2s;
+          cursor: pointer;
+        }
+        
+        .modal-zoom-btn.reset-btn {
+          background: #fff;
+          border: 1.5px solid #f59e0b;
+          color: #f59e0b;
+          font-size: 1.1rem;
+        }
+        
+        .modal-zoom-btn.reset-btn:hover:not(:disabled) {
+          background: #f59e0b;
+          color: #fff;
+          border-color: #f59e0b;
+          transform: scale(1.08);
+        }
+        .modal-zoom-btn:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+        .modal-zoom-btn:hover:not(:disabled) {
+          background: #667eea;
+          color: #fff;
+          border-color: #667eea;
+          transform: scale(1.08);
+        }
+        .modal-zoom-label {
+          font-size: 1rem;
+          color: #4a5568;
+          min-width: 48px;
+          text-align: center;
+          font-weight: 500;
+          letter-spacing: 0.5px;
         }
       `}</style>
     </div>
