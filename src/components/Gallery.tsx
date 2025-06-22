@@ -396,7 +396,9 @@ export default function Gallery({ photos: initialPhotos, currentUserId, currentU
                   {/* Siempre mostrar contador: spinner si está cargando, número si ya se cargó */}
                   {commentCounts[photo.id] === undefined ? (
                     <span className="comment-count loading">
-                      <div className="spinner-border spinner-border-sm"></div>
+                      <div className="glass-spinner">
+                        <div className="glass-spinner-inner"></div>
+                      </div>
                     </span>
                   ) : commentCounts[photo.id] > 0 ? (
                     <span className="comment-count">{commentCounts[photo.id]}</span>
@@ -758,15 +760,33 @@ export default function Gallery({ photos: initialPhotos, currentUserId, currentU
         }
         
         .comment-count.loading {
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-          box-shadow: 0 3px 8px rgba(102, 126, 234, 0.4);
-          animation: loadingPulse 1.5s ease-in-out infinite;
+          background: linear-gradient(135deg, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0.1) 100%);
+          backdrop-filter: blur(15px);
+          border: 1px solid rgba(255, 255, 255, 0.3);
+          box-shadow: 
+            0 3px 8px rgba(0, 0, 0, 0.2),
+            inset 0 1px 0 rgba(255, 255, 255, 0.4);
+          animation: glassyPulse 2s ease-in-out infinite;
         }
         
-        .comment-count.loading .spinner-border-sm {
+        .glass-spinner {
+          width: 14px;
+          height: 14px;
+          position: relative;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        
+        .glass-spinner-inner {
           width: 12px;
           height: 12px;
-          border-width: 1px;
+          border: 2px solid transparent;
+          border-top: 2px solid rgba(255, 255, 255, 0.8);
+          border-right: 2px solid rgba(255, 255, 255, 0.6);
+          border-radius: 50%;
+          animation: glassySpin 1s linear infinite;
+          filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.3));
         }
         
         .comment-count.zero {
@@ -791,18 +811,41 @@ export default function Gallery({ photos: initialPhotos, currentUserId, currentU
           }
         }
         
-        @keyframes loadingPulse {
+        @keyframes glassyPulse {
           0% {
             transform: scale(1);
-            box-shadow: 0 3px 8px rgba(102, 126, 234, 0.4);
+            box-shadow: 
+              0 3px 8px rgba(0, 0, 0, 0.2),
+              inset 0 1px 0 rgba(255, 255, 255, 0.4),
+              0 0 0 0 rgba(255, 255, 255, 0.3);
           }
           50% {
             transform: scale(1.05);
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.6);
+            box-shadow: 
+              0 4px 12px rgba(0, 0, 0, 0.3),
+              inset 0 1px 0 rgba(255, 255, 255, 0.6),
+              0 0 0 4px rgba(255, 255, 255, 0.1);
           }
           100% {
             transform: scale(1);
-            box-shadow: 0 3px 8px rgba(102, 126, 234, 0.4);
+            box-shadow: 
+              0 3px 8px rgba(0, 0, 0, 0.2),
+              inset 0 1px 0 rgba(255, 255, 255, 0.4),
+              0 0 0 0 rgba(255, 255, 255, 0.3);
+          }
+        }
+        
+        @keyframes glassySpin {
+          0% {
+            transform: rotate(0deg);
+            filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.3));
+          }
+          50% {
+            filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.5));
+          }
+          100% {
+            transform: rotate(360deg);
+            filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.3));
           }
         }
 
