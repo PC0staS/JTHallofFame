@@ -23,8 +23,8 @@ jobs:
 
     - name: Keep Supabase database active
       env:
-        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-        SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        SUPABASE_URL: ${{ secrets.PUBLIC_SUPABASE_URL }}
+        SUPABASE_ANON_KEY: ${{ secrets.PUBLIC_SUPABASE_ANON_KEY }}
       run: |
         echo "Enviando petición a Supabase para mantener la base de datos activa..."
         
