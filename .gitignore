@@ -25,3 +25,6 @@ pnpm-debug.log*
 
 # Local Netlify folder
 .netlify
+
+# GitHub Actions artifacts
+.github/workflows/*.log

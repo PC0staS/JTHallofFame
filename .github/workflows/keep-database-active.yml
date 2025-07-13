@@ -1,0 +1,55 @@
+name: Keep Database Active
+
+on:
+  schedule:
+    # Ejecutar cada 5 días a las 6:00 AM UTC
+    - cron: '0 6 */5 * *'
+  
+  # Permitir ejecución manual desde GitHub Actions
+  workflow_dispatch:
+
+jobs:
+  ping-database:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+
+    - name: Keep Supabase database active
+      env:
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+      run: |
+        echo "Enviando petición a Supabase para mantener la base de datos activa..."
+        
+        # Verificar que las variables de entorno están configuradas
+        if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ]; then
+          echo "Error: SUPABASE_URL o SUPABASE_ANON_KEY no están configurados en los secrets"
+          exit 1
+        fi
+        
+        # Hacer una petición simple a la tabla de fotos para mantener la conexión activa
+        response=$(curl -X GET "$SUPABASE_URL/rest/v1/photos?select=id&limit=1" \
+          -H "apikey: $SUPABASE_ANON_KEY" \
+          -H "Authorization: Bearer $SUPABASE_ANON_KEY" \
+          -H "Content-Type: application/json" \
+          --write-out "%{http_code}" \
+          --silent \
+          --output /dev/null)
+        
+        if [ "$response" -eq 200 ]; then
+          echo "✅ Petición exitosa - Base de datos activa - $(date)"
+        else
+          echo "⚠️  Respuesta HTTP: $response - $(date)"
+        fi
+
+    - name: Log activity
+      run: |
+        echo "Database keep-alive ejecutado exitosamente en $(date)"
+        echo "Próxima ejecución programada en 5 días"
