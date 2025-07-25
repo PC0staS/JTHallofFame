@@ -65,9 +65,9 @@ export default function Upload({ onUploadSuccess, userId, userName }: UploadProp
         return;
       }
       
-      // Validar tamaño (máximo 5MB)
-      if (selectedFile.size > 5 * 1024 * 1024) {
-        setError('El archivo es demasiado grande. Máximo 5MB');
+      // Validar tamaño (máximo 15MB)
+      if (selectedFile.size > 15 * 1024 * 1024) {
+        setError('El archivo es demasiado grande. Máximo 15MB');
         return;
       }
 
@@ -434,7 +434,7 @@ export default function Upload({ onUploadSuccess, userId, userName }: UploadProp
                   <span className="upload-text">
                     {file ? file.name : 'Arrastra tu imagen aquí o haz clic para seleccionar'}
                   </span>
-                  <small className="upload-hint">JPG, PNG, GIF, WebP • Máximo 5MB</small>
+                  <small className="upload-hint">JPG, PNG, GIF, WebP • Máximo 15MB</small>
                 </div>
               </div>
             </div>            {/* Preview de la imagen */}

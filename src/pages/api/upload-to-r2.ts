@@ -35,6 +35,26 @@ export const POST: APIRoute = async ({ request }) => {
       });
     }
 
+    // Validar tipo de archivo
+    if (!file.type.startsWith('image/')) {
+      return new Response(JSON.stringify({ 
+        error: 'Solo se permiten archivos de imagen' 
+      }), { 
+        status: 400,
+        headers: { 'Content-Type': 'application/json' } 
+      });
+    }
+
+    // Validar tamaño de archivo (máximo 15MB)
+    if (file.size > 15 * 1024 * 1024) {
+      return new Response(JSON.stringify({ 
+        error: 'El archivo es demasiado grande. Máximo 15MB' 
+      }), { 
+        status: 400,
+        headers: { 'Content-Type': 'application/json' } 
+      });
+    }
+
     // Generar nombre único para el archivo
     const timestamp = new Date().getTime();
     const fileExtension = file.name.split('.').pop();

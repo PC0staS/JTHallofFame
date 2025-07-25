@@ -15,6 +15,10 @@ export default defineConfig({
       'import.meta.env.CLOUDFLARE_SECRET_ACCESS_KEY': JSON.stringify(process.env.CLOUDFLARE_SECRET_ACCESS_KEY),
       'import.meta.env.CLOUDFLARE_BUCKET_NAME': JSON.stringify(process.env.CLOUDFLARE_BUCKET_NAME),
       'import.meta.env.CLOUDFLARE_PUBLIC_URL': JSON.stringify(process.env.CLOUDFLARE_PUBLIC_URL),
+    },
+    server: {
+      // Aumentar límite para archivos más grandes
+      maxFileSize: 20 * 1024 * 1024 // 20MB
     }
   }
 })
